@@ -1,0 +1,38 @@
+<header class="app-header shadow-sm bg-white border-bottom">
+  <div class="container-fluid px-3 d-flex align-items-center justify-content-between h-100">
+    <div class="d-flex align-items-center gap-3">
+      <button
+        type="button"
+        class="btn btn-outline-secondary d-md-none sidebar-toggle-btn"
+        (click)="onToggleClick()"
+        [attr.aria-expanded]="sidebarOpen"
+        aria-controls="app-sidebar"
+        aria-label="Toggle navigation menu"
+      >
+        <i class="bi bi-list fs-5" aria-hidden="true"></i>
+      </button>
+
+      <div class="d-flex align-items-center gap-2">
+        <span class="brand-icon rounded-circle d-flex align-items-center justify-content-center text-white bg-primary">
+          <i class="bi bi-phone" aria-hidden="true"></i>
+        </span>
+        <div>
+          <span class="brand-title fw-bold text-dark d-block lh-1">{{ appTitle }}</span>
+          <small class="text-muted d-none d-sm-inline font-monospace">Foundation &middot; Step 1</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 gap-sm-3">
+      <div *ngIf="activeShopId" class="badge bg-light text-dark border d-none d-sm-inline-flex align-items-center gap-1 py-2 px-2">
+        <i class="bi bi-shop text-primary" aria-hidden="true"></i>
+        <span>Tenant: <strong class="font-monospace">{{ activeShopId }}</strong></span>
+      </div>
+
+      <app-status-badge
+        [label]="connectionLabel"
+        [tone]="connectionTone"
+      ></app-status-badge>
+    </div>
+  </div>
+</header>

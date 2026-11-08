@@ -1,0 +1,25 @@
+.app-header {
+  block-size: var(--ms-header-height);
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1020;
+}
+
+.brand-icon {
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+}
+
+.brand-title {
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.sidebar-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.375rem;
+  block-size: 2.375rem;
+  padding: 0;
+}

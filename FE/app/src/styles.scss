@@ -1,0 +1,92 @@
+:root {
+  --ms-bg-app: #f4f6f9;
+  --ms-bg-surface: #ffffff;
+  --ms-bg-sidebar: #0f172a;
+  --ms-bg-sidebar-hover: #1e293b;
+  --ms-text-primary: #0f172a;
+  --ms-text-secondary: #475569;
+  --ms-text-sidebar: #e2e8f0;
+  --ms-text-sidebar-muted: #94a3b8;
+  --ms-border-subtle: #e2e8f0;
+  --ms-brand-primary: #2563eb;
+  --ms-brand-primary-hover: #1d4ed8;
+  --ms-focus-ring: #1d4ed8;
+  --ms-sidebar-width: 16.5rem;
+  --ms-header-height: 3.75rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  background-color: var(--ms-bg-app);
+  color: var(--ms-text-primary);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Accessible visually-hidden utility that reveals focusable skip links */
+.skip-link:not(:focus):not(:focus-within):not(:active) {
+  position: absolute !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  inline-size: 1px !important;
+  block-size: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible,
+.skip-link:active {
+  position: fixed;
+  inset-block-start: 0.75rem;
+  inset-inline-start: 0.75rem;
+  z-index: 2000;
+  padding-block: 0.5rem;
+  padding-inline: 1rem;
+  background-color: var(--ms-bg-sidebar);
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+}
+
+/* High-contrast keyboard focus indicator */
+:where(a:any-link, button, input, select, textarea, [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 3px solid var(--ms-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Inactive / off-screen inert sections */
+[inert],
+[inert] * {
+  opacity: 0.5;
+  cursor: default;
+  user-select: none;
+}
+
+/* Minimum interactive target sizes (WCAG 2.2 AA 2.5.8) */
+:where(button, a.nav-link, .btn) {
+  min-block-size: 24px;
+  min-inline-size: 24px;
+}
+
+@media (pointer: coarse) {
+  :where(button, a.nav-link, .btn) {
+    min-block-size: 44px;
+    min-inline-size: 44px;
+  }
+}

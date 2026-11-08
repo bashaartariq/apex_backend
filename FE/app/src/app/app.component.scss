@@ -1,0 +1,25 @@
+.app-shell {
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  background-color: var(--ms-bg-app);
+}
+
+.app-layout {
+  min-block-size: calc(100vh - var(--ms-header-height));
+  min-block-size: calc(100dvh - var(--ms-header-height));
+}
+
+.app-main {
+  background-color: var(--ms-bg-app);
+  overflow-y: auto;
+  min-inline-size: 0; /* Prevents flex children from blowing out layout */
+  outline: none;
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 1040;
+}

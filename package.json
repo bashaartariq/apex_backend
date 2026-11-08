@@ -1,0 +1,28 @@
+{
+  "name": "mobile-shop-management",
+  "version": "1.0.0",
+  "description": "Multi-Tenant Mobile Phone Shop Inventory Management & POS Web Application",
+  "private": true,
+  "scripts": {
+    "start:backend": "npm --prefix BE run dev",
+    "start:frontend": "npm --prefix FE/app start",
+    "build:backend": "npm --prefix BE run build",
+    "build:frontend": "npm --prefix FE/app run build",
+    "build": "npm run build:backend && npm run build:frontend",
+    "db:init": "npm --prefix BE run db:init",
+    "db:migrate": "npm --prefix BE run db:migrate",
+    "db:seed": "npm --prefix BE run db:seed",
+    "typecheck": "npm --prefix BE run typecheck"
+  },
+  "keywords": [
+    "mobile-shop",
+    "pos",
+    "inventory-management",
+    "multi-tenant",
+    "angular",
+    "express",
+    "sqlite"
+  ],
+  "author": "",
+  "license": "ISC"
+}
