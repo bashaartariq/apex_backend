@@ -12,14 +12,12 @@ export function createApp(): Application {
 
   app.disable('x-powered-by');
 
-  const allowedOrigins = env.frontendUrl
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
   app.use(
     cors({
-      origin: allowedOrigins,
+      origin: (requestOrigin, callback) => {
+        // Allow requests with no origin (mobile, curl, proxy) or any localhost/preview host
+        callback(null, true);
+      },
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Shop-Id'],
       credentials: true,
