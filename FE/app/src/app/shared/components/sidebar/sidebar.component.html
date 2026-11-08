@@ -70,14 +70,14 @@
     <div class="d-flex align-items-center gap-2 mb-1">
       <i class="bi bi-shop text-primary fs-5" aria-hidden="true"></i>
       <div class="overflow-hidden">
-        <div class="text-light small fw-bold text-truncate">Downtown Store #1</div>
-        <div class="small text-muted font-monospace" style="font-size: 0.6875rem;">{{ activeShopId || 'SHOP-DOWNTOWN-01' }}</div>
+        <div class="text-light small fw-bold text-truncate">{{ auth.currentShop?.name || 'My Mobile Shop' }}</div>
+        <div class="small text-muted font-monospace" style="font-size: 0.6875rem;">{{ auth.currentShop?.id || activeShopId || 'SHOP-DEFAULT' }}</div>
       </div>
     </div>
     <div class="d-flex align-items-center justify-content-between pt-2 border-top border-dark mt-2" style="font-size: 0.7rem;">
-      <span class="text-muted">v1.2.0 &middot; SaaS Enterprise</span>
+      <span class="text-muted">{{ auth.currentUser?.role === 'SHOP_ADMIN' ? 'Admin Access' : 'Shopkeeper' }}</span>
       <span class="text-success d-flex align-items-center gap-1">
-        <span class="status-dot-sm bg-success rounded-circle"></span> Online
+        <span class="status-dot-sm bg-success rounded-circle"></span> Tenant Active
       </span>
     </div>
   </div>

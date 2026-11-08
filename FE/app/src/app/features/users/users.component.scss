@@ -1,0 +1,37 @@
+.users-container {
+  background-color: var(--bg-canvas, #f8fafc);
+  min-height: calc(100vh - 60px);
+}
+
+.stat-card {
+  border-radius: 10px;
+  border-color: var(--border-subtle, #e2e8f0) !important;
+}
+
+.avatar-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+  background-color: #2563eb;
+}
+
+.permission-grid {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.hover-bg {
+  transition: background-color 0.15s ease-in-out;
+
+  &:hover {
+    background-color: #f1f5f9;
+  }
+}
+
+.table th {
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  border-bottom-width: 1px;
+}

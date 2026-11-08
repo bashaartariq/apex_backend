@@ -1,0 +1,544 @@
+<div class="users-container p-3 p-md-4">
+  <!-- Page Header -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2">
+        <h1 class="h4 fw-bold mb-0 text-dark">Staff & Shopkeeper Directory</h1>
+        <span class="badge bg-light text-secondary border px-2 py-1">Tenant ID: {{ auth.currentShop?.id }}</span>
+      </div>
+      <p class="text-secondary small mb-0 mt-1">
+        Manage shopkeeper accounts, status, and granular module permissions for {{ auth.currentShop?.name }}.
+      </p>
+    </div>
+
+    <div>
+      <button type="button" class="btn btn-primary d-flex align-items-center gap-2" (click)="openAddModal()">
+        <i class="bi bi-person-plus-fill"></i>
+        <span>Add Staff Member</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Stat Summary Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card stat-card shadow-sm border h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="text-secondary small fw-medium">Total Staff</span>
+            <div class="stat-icon bg-light text-primary rounded-circle p-2">
+              <i class="bi bi-people fs-6"></i>
+            </div>
+          </div>
+          <div class="stat-value h4 fw-bold mb-0 mt-2">{{ staffList.length }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="card stat-card shadow-sm border h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="text-secondary small fw-medium">Active Accounts</span>
+            <div class="stat-icon bg-success-subtle text-success rounded-circle p-2">
+              <i class="bi bi-check-circle fs-6"></i>
+            </div>
+          </div>
+          <div class="stat-value h4 fw-bold mb-0 mt-2">
+            {{ activeStaffCount }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="card stat-card shadow-sm border h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="text-secondary small fw-medium">Shopkeepers</span>
+            <div class="stat-icon bg-info-subtle text-info rounded-circle p-2">
+              <i class="bi bi-person-badge fs-6"></i>
+            </div>
+          </div>
+          <div class="stat-value h4 fw-bold mb-0 mt-2">
+            {{ shopkeeperCount }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="card stat-card shadow-sm border h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="text-secondary small fw-medium">Tenant Admins</span>
+            <div class="stat-icon bg-primary-subtle text-primary rounded-circle p-2">
+              <i class="bi bi-shield-lock fs-6"></i>
+            </div>
+          </div>
+          <div class="stat-value h4 fw-bold mb-0 mt-2">
+            {{ adminCount }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & Role Filter Tabs -->
+  <div class="card border shadow-sm mb-4">
+    <div class="card-body p-3">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <!-- Search bar -->
+        <div class="search-input-wrapper position-relative flex-grow-1" style="max-width: 360px;">
+          <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+          <input
+            type="text"
+            class="form-control form-control-sm ps-5"
+            placeholder="Search by name, email, or phone..."
+            [value]="searchQuery"
+            (input)="onSearchChange($any($event.target).value)"
+          />
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="btn-group btn-group-sm" role="group">
+          <button
+            type="button"
+            class="btn"
+            [class.btn-primary]="activeFilter === 'ALL'"
+            [class.btn-outline-secondary]="activeFilter !== 'ALL'"
+            (click)="setRoleFilter('ALL')"
+          >
+            All Roles ({{ staffList.length }})
+          </button>
+          <button
+            type="button"
+            class="btn"
+            [class.btn-primary]="activeFilter === 'SHOPKEEPER'"
+            [class.btn-outline-secondary]="activeFilter !== 'SHOPKEEPER'"
+            (click)="setRoleFilter('SHOPKEEPER')"
+          >
+            Shopkeepers
+          </button>
+          <button
+            type="button"
+            class="btn"
+            [class.btn-primary]="activeFilter === 'SHOP_ADMIN'"
+            [class.btn-outline-secondary]="activeFilter !== 'SHOP_ADMIN'"
+            (click)="setRoleFilter('SHOP_ADMIN')"
+          >
+            Admins
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Staff Data Table -->
+  <div class="card border shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light text-secondary text-uppercase small">
+          <tr>
+            <th scope="col" class="ps-4 py-3">Team Member</th>
+            <th scope="col" class="py-3">Contact</th>
+            <th scope="col" class="py-3">Role</th>
+            <th scope="col" class="py-3">Access Privileges</th>
+            <th scope="col" class="py-3">Status</th>
+            <th scope="col" class="text-end pe-4 py-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Loading State -->
+          <tr *ngIf="loading">
+            <td colspan="6" class="text-center py-5 text-secondary">
+              <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+              Loading staff accounts...
+            </td>
+          </tr>
+
+          <!-- Empty State -->
+          <tr *ngIf="!loading && filteredStaff.length === 0">
+            <td colspan="6" class="text-center py-5 text-secondary">
+              <i class="bi bi-people fs-1 text-muted d-block mb-2"></i>
+              No staff members found matching criteria.
+            </td>
+          </tr>
+
+          <!-- Data Rows -->
+          <tr *ngFor="let staff of filteredStaff">
+            <!-- Member Name + Avatar -->
+            <td class="ps-4">
+              <div class="d-flex align-items-center gap-2">
+                <div class="avatar-badge d-flex align-items-center justify-content-center fw-semibold text-white bg-primary">
+                  {{ staff.name.charAt(0).toUpperCase() }}
+                </div>
+                <div>
+                  <div class="fw-semibold text-dark">{{ staff.name }}</div>
+                  <div class="text-muted small">{{ staff.email }}</div>
+                </div>
+              </div>
+            </td>
+
+            <!-- Contact -->
+            <td>
+              <span class="text-secondary small">{{ staff.phone || '—' }}</span>
+            </td>
+
+            <!-- Role Badge -->
+            <td>
+              <span
+                class="badge"
+                [class.bg-primary-subtle]="staff.role === 'SHOP_ADMIN'"
+                [class.text-primary]="staff.role === 'SHOP_ADMIN'"
+                [class.bg-info-subtle]="staff.role === 'SHOPKEEPER'"
+                [class.text-info]="staff.role === 'SHOPKEEPER'"
+              >
+                {{ staff.role === 'SHOP_ADMIN' ? 'Shop Admin' : 'Shopkeeper' }}
+              </span>
+            </td>
+
+            <!-- Permissions / Access -->
+            <td>
+              <div *ngIf="staff.role === 'SHOP_ADMIN'">
+                <span class="badge bg-light text-secondary border">Full Tenant Access</span>
+              </div>
+              <div *ngIf="staff.role === 'SHOPKEEPER'">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary py-0 px-2"
+                  style="font-size: 0.75rem;"
+                  (click)="openPermsModal(staff)"
+                >
+                  <i class="bi bi-sliders me-1"></i>
+                  {{ staff.permissions.length || 0 }} modules assigned
+                </button>
+              </div>
+            </td>
+
+            <!-- Status Toggle -->
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <span
+                  class="badge rounded-pill"
+                  [class.bg-success-subtle]="staff.status === 'ACTIVE'"
+                  [class.text-success]="staff.status === 'ACTIVE'"
+                  [class.bg-danger-subtle]="staff.status === 'INACTIVE'"
+                  [class.text-danger]="staff.status === 'INACTIVE'"
+                >
+                  <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>
+                  {{ staff.status }}
+                </span>
+              </div>
+            </td>
+
+            <!-- Actions -->
+            <td class="text-end pe-4">
+              <div class="btn-group btn-group-sm">
+                <!-- Permissions button (for shopkeepers) -->
+                <button
+                  *ngIf="staff.role === 'SHOPKEEPER'"
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  (click)="openPermsModal(staff)"
+                  title="Assign permissions"
+                >
+                  <i class="bi bi-key"></i>
+                </button>
+
+                <!-- Edit user details -->
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  (click)="openEditModal(staff)"
+                  title="Edit details"
+                >
+                  <i class="bi bi-pencil"></i>
+                </button>
+
+                <!-- Toggle Active/Inactive -->
+                <button
+                  *ngIf="staff.id !== auth.currentUser?.id"
+                  type="button"
+                  class="btn"
+                  [class.btn-outline-danger]="staff.status === 'ACTIVE'"
+                  [class.btn-outline-success]="staff.status === 'INACTIVE'"
+                  (click)="toggleUserStatus(staff)"
+                  [title]="staff.status === 'ACTIVE' ? 'Deactivate account' : 'Activate account'"
+                >
+                  <i class="bi" [class.bi-person-dash]="staff.status === 'ACTIVE'" [class.bi-person-check]="staff.status === 'INACTIVE'"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: ADD STAFF MEMBER                     -->
+<!-- ========================================== -->
+<div *ngIf="showAddModal" class="modal-backdrop fade show"></div>
+<div
+  *ngIf="showAddModal"
+  class="modal fade show d-block"
+  tabindex="-1"
+  role="dialog"
+  aria-modal="true"
+>
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content shadow border-0">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Add Staff Member</h5>
+        <button type="button" class="btn-close" (click)="closeModals()" aria-label="Close"></button>
+      </div>
+      <form [formGroup]="addStaffForm" (ngSubmit)="submitAddStaff()" novalidate>
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold text-secondary">Full Name</label>
+              <input
+                type="text"
+                class="form-control"
+                [class.is-invalid]="addStaffForm.get('name')?.touched && addStaffForm.get('name')?.invalid"
+                formControlName="name"
+                placeholder="Staff full name"
+              />
+              <div *ngIf="addStaffForm.get('name')?.touched && addStaffForm.get('name')?.invalid" class="text-danger small mt-1">
+                Name is required.
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold text-secondary">Email Address</label>
+              <input
+                type="email"
+                class="form-control"
+                [class.is-invalid]="addStaffForm.get('email')?.touched && addStaffForm.get('email')?.invalid"
+                formControlName="email"
+                placeholder="staff@shop.com"
+              />
+              <div *ngIf="addStaffForm.get('email')?.touched && addStaffForm.get('email')?.invalid" class="text-danger small mt-1">
+                Valid email is required.
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold text-secondary">Phone Number</label>
+              <input type="tel" class="form-control" formControlName="phone" placeholder="+1 (555) 000-0000" />
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold text-secondary">Initial Password</label>
+              <input
+                type="password"
+                class="form-control"
+                [class.is-invalid]="addStaffForm.get('password')?.touched && addStaffForm.get('password')?.invalid"
+                formControlName="password"
+                placeholder="Min 8 characters"
+              />
+              <div *ngIf="addStaffForm.get('password')?.touched && addStaffForm.get('password')?.invalid" class="text-danger small mt-1">
+                Password must be at least 8 characters.
+              </div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-semibold text-secondary">Role</label>
+              <select class="form-select" formControlName="role">
+                <option value="SHOPKEEPER">Shopkeeper (Restricted to assigned permissions)</option>
+                <option value="SHOP_ADMIN">Shop Administrator (Full tenant privileges)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Permissions section for Shopkeeper -->
+          <div *ngIf="addStaffForm.get('role')?.value === 'SHOPKEEPER'" class="mt-4 pt-3 border-top">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label small fw-semibold text-secondary mb-0">Initial Module Permissions</label>
+              <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-link text-primary p-0 me-3 small text-decoration-none" (click)="selectAllPerms()">
+                  Select All
+                </button>
+                <button type="button" class="btn btn-link text-secondary p-0 small text-decoration-none" (click)="clearAllPerms()">
+                  Clear All
+                </button>
+              </div>
+            </div>
+
+            <div class="permission-grid">
+              <div *ngFor="let group of groupedPermissions" class="card mb-2 border">
+                <div class="card-header bg-light py-1 px-3 fw-semibold small text-dark">
+                  {{ group.module }}
+                </div>
+                <div class="card-body p-2">
+                  <div class="row g-2">
+                    <div *ngFor="let p of group.permissions" class="col-12 col-md-6">
+                      <div class="form-check small">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          [id]="'perm_add_' + p.id"
+                          [checked]="selectedUserPerms.has(p.id)"
+                          (change)="togglePerm(p.id)"
+                        />
+                        <label class="form-check-label" [for]="'perm_add_' + p.id">
+                          <strong>{{ p.name }}</strong>
+                          <span class="text-muted d-block" style="font-size: 0.75rem;">{{ p.description }}</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" (click)="closeModals()" [disabled]="submitting">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="submitting">
+            <span *ngIf="submitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            <span>Create Staff Member</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: EDIT STAFF DETAILS                   -->
+<!-- ========================================== -->
+<div *ngIf="showEditModal" class="modal-backdrop fade show"></div>
+<div
+  *ngIf="showEditModal"
+  class="modal fade show d-block"
+  tabindex="-1"
+  role="dialog"
+  aria-modal="true"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow border-0">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Edit Staff Member</h5>
+        <button type="button" class="btn-close" (click)="closeModals()" aria-label="Close"></button>
+      </div>
+      <form [formGroup]="editStaffForm" (ngSubmit)="submitEditStaff()" novalidate>
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Full Name</label>
+            <input type="text" class="form-control" formControlName="name" />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Phone Number</label>
+            <input type="tel" class="form-control" formControlName="phone" />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Role</label>
+            <select class="form-select" formControlName="role">
+              <option value="SHOPKEEPER">Shopkeeper</option>
+              <option value="SHOP_ADMIN">Shop Administrator</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" (click)="closeModals()" [disabled]="submitting">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="submitting">
+            <span *ngIf="submitting" class="spinner-border spinner-border-sm me-2" role="status"></span>
+            <span>Save Changes</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: ASSIGN PERMISSIONS                   -->
+<!-- ========================================== -->
+<div *ngIf="showPermsModal" class="modal-backdrop fade show"></div>
+<div
+  *ngIf="showPermsModal"
+  class="modal fade show d-block"
+  tabindex="-1"
+  role="dialog"
+  aria-modal="true"
+>
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content shadow border-0">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-bold mb-0">Manage Permissions: {{ selectedUser?.name }}</h5>
+          <span class="text-secondary small">{{ selectedUser?.email }} • {{ selectedUser?.role }}</span>
+        </div>
+        <button type="button" class="btn-close" (click)="closeModals()" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="small text-muted">
+            Check the modules and operations this shopkeeper is authorized to access.
+          </span>
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-sm btn-outline-primary" (click)="selectAllPerms()">
+              Select All (20)
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="clearAllPerms()">
+              Clear All
+            </button>
+          </div>
+        </div>
+
+        <div class="permission-groups">
+          <div *ngFor="let group of groupedPermissions" class="card mb-3 border">
+            <div class="card-header bg-light py-2 px-3 fw-bold small text-dark d-flex justify-content-between align-items-center">
+              <span>{{ group.module }}</span>
+              <span class="badge bg-secondary-subtle text-secondary">{{ group.permissions.length }} rights</span>
+            </div>
+            <div class="card-body p-3">
+              <div class="row g-2">
+                <div *ngFor="let p of group.permissions" class="col-12 col-md-6">
+                  <div class="form-check small p-2 rounded hover-bg">
+                    <input
+                      class="form-check-input ms-0 me-2"
+                      type="checkbox"
+                      [id]="'p_check_' + p.id"
+                      [checked]="selectedUserPerms.has(p.id)"
+                      (change)="togglePerm(p.id)"
+                    />
+                    <label class="form-check-label w-100" [for]="'p_check_' + p.id">
+                      <strong class="d-block text-dark">{{ p.name }}</strong>
+                      <span class="text-secondary" style="font-size: 0.775rem;">{{ p.description }}</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light">
+        <div class="me-auto small text-muted">
+          {{ selectedUserPerms.size }} of {{ permissionsCatalog.length }} permissions selected
+        </div>
+        <button type="button" class="btn btn-secondary" (click)="closeModals()" [disabled]="submitting">
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary" (click)="savePermissions()" [disabled]="submitting">
+          <span *ngIf="submitting" class="spinner-border spinner-border-sm me-2" role="status"></span>
+          <span>Save Permissions</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

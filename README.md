@@ -2,7 +2,7 @@
 
 A modern, multi-tenant web application designed for mobile phone retail shops to manage device inventories, IMEI tracking, point-of-sale transactions, warranties, and multi-tenant store operations.
 
-> **Status:** Step 1 Foundation Completed (Monorepo architecture, Angular 14 frontend shell, Express REST API, SQLite database with WAL and foreign key enforcement, migrations, and live connectivity).
+> **Status:** Step 1 Foundation & UI/UX Design System Completed. **Step 2: Authentication & Multi-Tenancy Completed** (Strict tenant isolation, JWT + HttpOnly refresh token rotation, bcrypt password hashing, role & 20-permission authorization matrix, shop registration, staff directory, and profile management).
 
 ---
 

@@ -2,9 +2,13 @@ import { getDatabase, closeDatabase } from '../config/database';
 import { execute, queryAll, withTransaction } from './query';
 import { runMigrations } from './migrate';
 import { Seed, seed001SystemMetadata } from './seeds/001_system_metadata';
+import { seed002PermissionsAndDemoTenants } from './seeds/002_permissions';
 import { logger } from '../utils/logger';
 
-const SEEDS: readonly Seed[] = [seed001SystemMetadata];
+const SEEDS: readonly Seed[] = [
+  seed001SystemMetadata,
+  seed002PermissionsAndDemoTenants,
+];
 
 function ensureSeedsTable(): void {
   const db = getDatabase();

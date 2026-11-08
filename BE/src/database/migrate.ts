@@ -1,9 +1,13 @@
 import { getDatabase, closeDatabase } from '../config/database';
 import { execute, queryAll, withTransaction } from './query';
 import { Migration, migration001InitInfrastructure } from './migrations/001_init_infrastructure';
+import { migration002AuthAndMultiTenancy } from './migrations/002_auth_and_multi_tenancy';
 import { logger } from '../utils/logger';
 
-const MIGRATIONS: readonly Migration[] = [migration001InitInfrastructure];
+const MIGRATIONS: readonly Migration[] = [
+  migration001InitInfrastructure,
+  migration002AuthAndMultiTenancy,
+];
 
 function ensureMigrationsTable(): void {
   const db = getDatabase();

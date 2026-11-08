@@ -23,43 +23,12 @@
         <i class="bi" [ngClass]="sidebarCollapsed ? 'bi-layout-sidebar-inset' : 'bi-layout-sidebar'" aria-hidden="true"></i>
       </button>
 
-      <!-- Shop / Tenant Selector Dropdown -->
-      <div class="position-relative">
-        <button
-          type="button"
-          class="tenant-selector-btn d-flex align-items-center gap-2 border rounded px-2 py-1 bg-light"
-          (click)="showShopSelector = !showShopSelector; showNotifications = false; showProfileMenu = false"
-          aria-haspopup="true"
-          [attr.aria-expanded]="showShopSelector"
-        >
-          <span class="tenant-dot"></span>
-          <div class="text-start d-none d-sm-block">
-            <span class="d-block fw-semibold text-dark lh-1 small">{{ currentShopName }}</span>
-            <small class="text-muted font-monospace" style="font-size: 0.6875rem;">{{ activeShopId || 'SHOP-DOWNTOWN-01' }}</small>
-          </div>
-          <i class="bi bi-chevron-down text-muted small ms-1" aria-hidden="true"></i>
-        </button>
-
-        <!-- Dropdown Menu -->
-        <div *ngIf="showShopSelector" class="custom-dropdown shadow-lg border rounded p-1 bg-white position-absolute start-0 mt-1" style="inline-size: 240px; z-index: 1050;">
-          <div class="px-3 py-2 text-uppercase text-muted fw-bold border-bottom" style="font-size: 0.6875rem; letter-spacing: 0.05em;">
-            Switch Store Location
-          </div>
-          <div class="py-1">
-            <button
-              *ngFor="let s of shops"
-              type="button"
-              class="dropdown-shop-item w-100 text-start px-3 py-2 d-flex align-items-center justify-content-between border-0 bg-transparent rounded"
-              [class.active]="s.id === (activeShopId || 'SHOP-DOWNTOWN-01')"
-              (click)="switchShop(s)"
-            >
-              <div>
-                <div class="fw-semibold text-dark small">{{ s.name }}</div>
-                <div class="text-muted" style="font-size: 0.75rem;">{{ s.location }}</div>
-              </div>
-              <i *ngIf="s.id === (activeShopId || 'SHOP-DOWNTOWN-01')" class="bi bi-check text-primary fs-5" aria-hidden="true"></i>
-            </button>
-          </div>
+      <!-- Authenticated Shop / Tenant Indicator -->
+      <div class="tenant-badge d-flex align-items-center gap-2 border rounded px-2 py-1 bg-light">
+        <span class="tenant-dot"></span>
+        <div class="text-start d-none d-sm-block">
+          <span class="d-block fw-semibold text-dark lh-1 small">{{ currentShopName }}</span>
+          <small class="text-muted font-monospace" style="font-size: 0.6875rem;">{{ currentShopId }}</small>
         </div>
       </div>
 
@@ -101,7 +70,7 @@
         <button
           type="button"
           class="btn-icon position-relative"
-          (click)="showNotifications = !showNotifications; showShopSelector = false; showProfileMenu = false"
+          (click)="showNotifications = !showNotifications; showProfileMenu = false"
           aria-label="View notifications"
           [attr.aria-expanded]="showNotifications"
         >
@@ -133,36 +102,45 @@
         <button
           type="button"
           class="user-profile-btn d-flex align-items-center gap-2 border-0 bg-transparent p-1 rounded"
-          (click)="showProfileMenu = !showProfileMenu; showNotifications = false; showShopSelector = false"
+          (click)="showProfileMenu = !showProfileMenu; showNotifications = false"
           [attr.aria-expanded]="showProfileMenu"
         >
           <div class="avatar-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center">
-            AM
+            {{ userInitials }}
           </div>
           <div class="text-start d-none d-xl-block">
-            <span class="d-block fw-semibold text-dark small lh-1">Alex Mercer</span>
-            <small class="text-secondary" style="font-size: 0.6875rem;">Store Manager</small>
+            <span class="d-block fw-semibold text-dark small lh-1">{{ auth.currentUser?.name || 'User' }}</span>
+            <small class="text-secondary" style="font-size: 0.6875rem;">
+              {{ auth.currentUser?.role === 'SHOP_ADMIN' ? 'Shop Admin' : 'Shopkeeper' }}
+            </small>
           </div>
           <i class="bi bi-chevron-down text-muted small d-none d-xl-inline" aria-hidden="true"></i>
         </button>
 
         <!-- Profile Dropdown Menu -->
-        <div *ngIf="showProfileMenu" class="custom-dropdown shadow-lg border rounded p-1 bg-white position-absolute end-0 mt-2" style="inline-size: 200px; z-index: 1050;">
+        <div *ngIf="showProfileMenu" class="custom-dropdown shadow-lg border rounded p-1 bg-white position-absolute end-0 mt-2" style="inline-size: 220px; z-index: 1050;">
           <div class="px-3 py-2 border-bottom">
-            <div class="fw-bold small text-dark">Alex Mercer</div>
-            <div class="text-muted" style="font-size: 0.75rem;">alex@apexcellular.io</div>
-            <span class="badge bg-light text-dark border mt-1" style="font-size: 0.65rem;">Role: Store Manager</span>
+            <div class="fw-bold small text-dark">{{ auth.currentUser?.name }}</div>
+            <div class="text-muted text-truncate" style="font-size: 0.75rem;">{{ auth.currentUser?.email }}</div>
+            <div class="mt-1 d-flex align-items-center gap-1">
+              <span class="badge" [class.bg-primary-subtle]="auth.currentUser?.role === 'SHOP_ADMIN'" [class.text-primary]="auth.currentUser?.role === 'SHOP_ADMIN'" [class.bg-info-subtle]="auth.currentUser?.role === 'SHOPKEEPER'" [class.text-info]="auth.currentUser?.role === 'SHOPKEEPER'" style="font-size: 0.65rem;">
+                {{ auth.currentUser?.role === 'SHOP_ADMIN' ? 'Full Administrator' : 'Shopkeeper' }}
+              </span>
+            </div>
           </div>
           <div class="py-1">
             <a routerLink="/settings" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 text-decoration-none text-dark" (click)="showProfileMenu = false">
-              <i class="bi bi-gear" aria-hidden="true"></i> Store Settings
+              <i class="bi bi-gear" aria-hidden="true"></i> Store Profile &amp; Settings
+            </a>
+            <a *ngIf="auth.isAdmin()" routerLink="/users" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 text-decoration-none text-dark" (click)="showProfileMenu = false">
+              <i class="bi bi-people" aria-hidden="true"></i> Staff Management
             </a>
             <a routerLink="/system" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 text-decoration-none text-dark" (click)="showProfileMenu = false">
               <i class="bi bi-hdd-network" aria-hidden="true"></i> System Health &amp; API
             </a>
             <div class="dropdown-divider my-1"></div>
-            <button type="button" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 text-danger border-0 bg-transparent w-100 text-start" (click)="showProfileMenu = false">
-              <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Lock Terminal
+            <button type="button" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 text-danger border-0 bg-transparent w-100 text-start" (click)="logout()">
+              <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Sign Out
             </button>
           </div>
         </div>

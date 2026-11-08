@@ -3,6 +3,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { SystemStatusService } from './core/services/system-status.service';
 import { TenantContextService } from './core/services/tenant-context.service';
+import { AuthService } from './core/services/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -19,11 +20,15 @@ export class AppComponent implements OnInit, OnDestroy {
   activeShopId: string | null = null;
 
   constructor(
+    public readonly auth: AuthService,
     private readonly statusService: SystemStatusService,
     private readonly tenantService: TenantContextService
   ) {}
 
   ngOnInit(): void {
+    // Validate session on bootstrap
+    this.auth.checkAuth().subscribe();
+
     // Restore collapsed sidebar preference if saved
     const savedCollapse = localStorage.getItem('apex_sidebar_collapsed');
     if (savedCollapse === 'true') {

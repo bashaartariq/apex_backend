@@ -1,0 +1,24 @@
+.settings-container {
+  background-color: var(--bg-canvas, #f8fafc);
+  min-height: calc(100vh - 60px);
+}
+
+.shop-badge {
+  width: 48px;
+  height: 48px;
+}
+
+.card {
+  border-radius: 10px;
+  border-color: var(--border-subtle, #e2e8f0) !important;
+}
+
+.form-control {
+  border-color: var(--border-subtle, #cbd5e1);
+  font-size: 0.875rem;
+
+  &:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  }
+}

@@ -1,5 +1,6 @@
 import express, { Application } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { env } from './config/env';
 import { attachTenantContext } from './middleware/tenantContext';
 import { apiRouter } from './routes';
@@ -27,6 +28,7 @@ export function createApp(): Application {
 
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true }));
+  app.use(cookieParser());
 
   // Multi-tenant request context foundation
   app.use(attachTenantContext);

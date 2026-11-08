@@ -3,12 +3,7 @@ import { Router } from '@angular/router';
 import { BadgeTone } from '../status-badge/status-badge.component';
 import { TenantContextService } from '../../../core/services/tenant-context.service';
 import { ToastService } from '../../../core/services/toast.service';
-
-export interface ShopTenantOption {
-  id: string;
-  name: string;
-  location: string;
-}
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-header',
@@ -28,13 +23,6 @@ export class HeaderComponent {
 
   showNotifications = false;
   showProfileMenu = false;
-  showShopSelector = false;
-
-  readonly shops: ShopTenantOption[] = [
-    { id: 'SHOP-DOWNTOWN-01', name: 'Downtown Flagship', location: 'Metropolitan Central' },
-    { id: 'SHOP-UPTOWN-02', name: 'Uptown Mall Branch', location: 'Galleria Level 2' },
-    { id: 'SHOP-AIRPORT-03', name: 'Airport Express Kiosk', location: 'Terminal 3 Gate B' },
-  ];
 
   readonly notifications = [
     { id: 1, title: 'Low Stock Alert', text: 'Torras 9H Glass for iPhone 15 Pro is below min threshold (8 left).', time: '10m ago', icon: 'bi-exclamation-triangle text-warning' },
@@ -43,14 +31,28 @@ export class HeaderComponent {
   ];
 
   constructor(
+    public readonly auth: AuthService,
     private readonly tenantService: TenantContextService,
     private readonly toast: ToastService,
     private readonly router: Router
   ) {}
 
   get currentShopName(): string {
-    const found = this.shops.find((s) => s.id === this.activeShopId);
-    return found ? found.name : 'Downtown Flagship';
+    return this.auth.currentShop?.name || 'Mobile Phone Shop';
+  }
+
+  get currentShopId(): string {
+    return this.auth.currentShop?.id || this.activeShopId || 'SHOP-DEFAULT';
+  }
+
+  get userInitials(): string {
+    const name = this.auth.currentUser?.name || 'User';
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
   }
 
   get connectionLabel(): string {
@@ -63,10 +65,8 @@ export class HeaderComponent {
     return this.apiConnected ? 'success' : 'danger';
   }
 
-  switchShop(shop: ShopTenantOption): void {
-    this.tenantService.setActiveShopId(shop.id);
-    this.showShopSelector = false;
-    this.toast.info('Store Context Switched', `Active store tenant set to ${shop.name} (${shop.id}).`);
+  goToPos(): void {
+    this.router.navigate(['/pos']);
   }
 
   onGlobalSearch(query: string): void {
@@ -74,7 +74,8 @@ export class HeaderComponent {
     this.toast.info('Global Search', `Filtered catalog and transactions for "${query}".`);
   }
 
-  goToPos(): void {
-    this.router.navigate(['/pos']);
+  logout(): void {
+    this.showProfileMenu = false;
+    this.auth.logout();
   }
 }

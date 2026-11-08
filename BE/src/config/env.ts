@@ -20,6 +20,10 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_PATH: z.string().min(1).default('./data/mobile_shop.sqlite'),
   FRONTEND_URL: z.string().min(1).default('http://localhost:4200'),
+  JWT_ACCESS_SECRET: z.string().min(16).default('mobile-shop-dev-access-secret-32-chars-long!'),
+  JWT_REFRESH_SECRET: z.string().min(16).default('mobile-shop-dev-refresh-secret-32-chars-long!'),
+  JWT_EXPIRES_IN: z.string().default('15m'),
+  REFRESH_EXPIRES_IN: z.string().default('7d'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -40,4 +44,8 @@ export const env = {
   port: parsedEnv.data.PORT,
   databasePath: resolvedDbPath,
   frontendUrl: parsedEnv.data.FRONTEND_URL,
+  jwtAccessSecret: parsedEnv.data.JWT_ACCESS_SECRET,
+  jwtRefreshSecret: parsedEnv.data.JWT_REFRESH_SECRET,
+  jwtExpiresIn: parsedEnv.data.JWT_EXPIRES_IN,
+  refreshExpiresIn: parsedEnv.data.REFRESH_EXPIRES_IN,
 } as const;

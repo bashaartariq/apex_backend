@@ -38,20 +38,36 @@ export class ToastService {
     }
   }
 
-  success(title: string, message: string): void {
-    this.show('success', title, message);
+  success(titleOrMessage: string, message?: string): void {
+    if (message === undefined) {
+      this.show('success', 'Success', titleOrMessage);
+    } else {
+      this.show('success', titleOrMessage, message);
+    }
   }
 
-  error(title: string, message: string): void {
-    this.show('danger', title, message, 6000);
+  error(titleOrMessage: string, message?: string): void {
+    if (message === undefined) {
+      this.show('danger', 'Error', titleOrMessage, 6000);
+    } else {
+      this.show('danger', titleOrMessage, message, 6000);
+    }
   }
 
-  warning(title: string, message: string): void {
-    this.show('warning', title, message);
+  warning(titleOrMessage: string, message?: string): void {
+    if (message === undefined) {
+      this.show('warning', 'Warning', titleOrMessage);
+    } else {
+      this.show('warning', titleOrMessage, message);
+    }
   }
 
-  info(title: string, message: string): void {
-    this.show('info', title, message);
+  info(titleOrMessage: string, message?: string): void {
+    if (message === undefined) {
+      this.show('info', 'Information', titleOrMessage);
+    } else {
+      this.show('info', titleOrMessage, message);
+    }
   }
 
   dismiss(id: string): void {

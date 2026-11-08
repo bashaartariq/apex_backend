@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
+import { AuthService } from '../../core/services/auth.service';
 import { PosSaleTransaction } from '../../core/models/inventory.models';
 
 export interface ChartPoint {
@@ -46,6 +47,7 @@ export class DashboardComponent implements OnInit {
   ];
 
   constructor(
+    public readonly auth: AuthService,
     private readonly mockData: MockDataService,
     private readonly toast: ToastService,
     private readonly router: Router

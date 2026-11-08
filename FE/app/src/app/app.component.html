@@ -1,7 +1,8 @@
 <!-- Accessible skip link for keyboard & assistive tech navigation -->
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
-<div class="app-shell d-flex flex-column min-vh-100">
+<!-- Authenticated Application Shell -->
+<div *ngIf="auth.isAuthenticated; else unauthenticatedView" class="app-shell d-flex flex-column min-vh-100">
   <!-- Top Application Header -->
   <app-header
     appTitle="ApexCellular POS"
@@ -37,6 +38,13 @@
     </main>
   </div>
 </div>
+
+<!-- Unauthenticated Guest View (Login / Register full viewport) -->
+<ng-template #unauthenticatedView>
+  <main class="guest-viewport">
+    <router-outlet></router-outlet>
+  </main>
+</ng-template>
 
 <!-- Floating Toast Notifications Host -->
 <app-toast-container></app-toast-container>
