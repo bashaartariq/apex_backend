@@ -4,18 +4,22 @@
 <div class="app-shell d-flex flex-column min-vh-100">
   <!-- Top Application Header -->
   <app-header
-    appTitle="Mobile Shop Management"
+    appTitle="ApexCellular POS"
     [sidebarOpen]="sidebarOpen"
+    [sidebarCollapsed]="sidebarCollapsed"
     [apiConnected]="apiConnected"
     [apiChecking]="apiChecking"
     [activeShopId]="activeShopId"
     (toggleSidebar)="toggleSidebar()"
+    (toggleCollapse)="toggleCollapse()"
   ></app-header>
 
   <!-- Shell Layout: Sidebar + Main Content -->
   <div class="app-layout d-flex flex-grow-1 position-relative">
     <app-sidebar
       [isOpen]="sidebarOpen"
+      [isCollapsed]="sidebarCollapsed"
+      [activeShopId]="activeShopId"
       (closeSidebar)="closeSidebar()"
     ></app-sidebar>
 
@@ -27,8 +31,12 @@
       aria-hidden="true"
     ></div>
 
+    <!-- Main Viewport Router Outlet -->
     <main id="main-content" class="app-main flex-grow-1" tabindex="-1">
       <router-outlet></router-outlet>
     </main>
   </div>
 </div>
+
+<!-- Floating Toast Notifications Host -->
+<app-toast-container></app-toast-container>

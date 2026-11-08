@@ -1,0 +1,9 @@
+.modal-dialog-custom {
+  position: fixed;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%);
+  inline-size: 450px;
+  max-inline-size: 94vw;
+  z-index: 1080;
+}

@@ -1,12 +1,15 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 
-export interface NavItem {
-  id: string;
-  label: string;
-  icon: string;
-  route?: string;
-  stageBadge?: string;
-  isPlaceholder?: boolean;
+export interface NavSection {
+  title?: string;
+  items: Array<{
+    id: string;
+    label: string;
+    icon: string;
+    route: string;
+    badge?: string;
+    badgeColor?: string;
+  }>;
 }
 
 @Component({
@@ -16,44 +19,42 @@ export interface NavItem {
 })
 export class SidebarComponent {
   @Input() isOpen = false;
+  @Input() isCollapsed = false;
+  @Input() activeShopId: string | null = null;
   @Output() closeSidebar = new EventEmitter<void>();
 
-  readonly navItems: readonly NavItem[] = [
+  readonly navSections: readonly NavSection[] = [
     {
-      id: 'foundation',
-      label: 'System & Connectivity',
-      icon: 'bi-hdd-network',
-      route: '/',
-      stageBadge: 'Step 1 Ready',
-      isPlaceholder: false,
+      title: 'CORE PLATFORM',
+      items: [
+        { id: 'dashboard', label: 'Dashboard', icon: 'bi-grid-1x2', route: '/dashboard' },
+        { id: 'pos', label: 'Sales / POS', icon: 'bi-receipt-cutoff', route: '/pos', badge: 'Live', badgeColor: 'bg-primary' },
+      ],
     },
     {
-      id: 'inventory',
-      label: 'Inventory & Devices',
-      icon: 'bi-phone',
-      stageBadge: 'Step 2',
-      isPlaceholder: true,
+      title: 'INVENTORY & HARDWARE',
+      items: [
+        { id: 'inventory-phones', label: 'Mobile Phones', icon: 'bi-phone', route: '/inventory/phones', badge: '142', badgeColor: 'bg-light text-dark' },
+        { id: 'inventory-accessories', label: 'Accessories & Parts', icon: 'bi-headphones', route: '/inventory/accessories', badge: '4 Low', badgeColor: 'bg-warning text-dark' },
+        { id: 'purchases', label: 'Purchases & Stock-In', icon: 'bi-box-seam', route: '/inventory/purchases' },
+        { id: 'suppliers', label: 'Suppliers', icon: 'bi-truck', route: '/inventory/suppliers' },
+      ],
     },
     {
-      id: 'pos',
-      label: 'Point of Sale (POS)',
-      icon: 'bi-receipt-cutoff',
-      stageBadge: 'Step 3',
-      isPlaceholder: true,
+      title: 'OPERATIONS',
+      items: [
+        { id: 'customers', label: 'Customers', icon: 'bi-people', route: '/customers' },
+        { id: 'returns', label: 'Returns & Exchanges', icon: 'bi-arrow-left-right', route: '/returns' },
+        { id: 'warranty', label: 'Warranty & Repairs', icon: 'bi-shield-check', route: '/warranty' },
+      ],
     },
     {
-      id: 'customers',
-      label: 'Customers & Invoices',
-      icon: 'bi-people',
-      stageBadge: 'Step 4',
-      isPlaceholder: true,
-    },
-    {
-      id: 'reports',
-      label: 'Tenant Reports & Admin',
-      icon: 'bi-graph-up',
-      stageBadge: 'Step 5',
-      isPlaceholder: true,
+      title: 'INSIGHTS & SYSTEM',
+      items: [
+        { id: 'reports', label: 'Reports & Analytics', icon: 'bi-bar-chart', route: '/reports' },
+        { id: 'system', label: 'System & API Health', icon: 'bi-hdd-network', route: '/system', badge: 'Online', badgeColor: 'bg-success' },
+        { id: 'settings', label: 'Settings', icon: 'bi-sliders2', route: '/settings' },
+      ],
     },
   ];
 

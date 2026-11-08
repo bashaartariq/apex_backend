@@ -1,0 +1,20 @@
+.inventory-page {
+  max-inline-size: 1600px;
+}
+
+.brand-icon-sm {
+  font-size: 0.6875rem;
+  letter-spacing: -0.02em;
+}
+
+.modal-dialog-custom {
+  position: fixed;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%);
+  inline-size: 540px;
+  max-inline-size: 94vw;
+  max-block-size: 90vh;
+  overflow-y: auto;
+  z-index: 1080;
+}

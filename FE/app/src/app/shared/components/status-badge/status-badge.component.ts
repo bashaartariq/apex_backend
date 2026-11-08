@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 
-export type BadgeTone = 'success' | 'warning' | 'danger' | 'neutral';
+export type BadgeTone = 'success' | 'warning' | 'danger' | 'neutral' | 'info' | 'brand' | 'purple';
 
 @Component({
   selector: 'app-status-badge',
@@ -52,11 +52,36 @@ export type BadgeTone = 'success' | 'warning' | 'danger' | 'neutral';
         background-color: #dc2626;
       }
       .tone-neutral {
-        background-color: #e2e8f0;
-        color: #334155;
+        background-color: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
       }
       .tone-neutral .status-dot {
         background-color: #64748b;
+      }
+      .tone-info {
+        background-color: #f0f9ff;
+        color: #0369a1;
+        border: 1px solid #bae6fd;
+      }
+      .tone-info .status-dot {
+        background-color: #0284c7;
+      }
+      .tone-brand {
+        background-color: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+      }
+      .tone-brand .status-dot {
+        background-color: #2563eb;
+      }
+      .tone-purple {
+        background-color: #f5f3ff;
+        color: #6d28d9;
+        border: 1px solid #ddd6fe;
+      }
+      .tone-purple .status-dot {
+        background-color: #7c3aed;
       }
     `,
   ],

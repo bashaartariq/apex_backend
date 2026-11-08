@@ -1,0 +1,484 @@
+<div class="pos-workspace d-flex flex-column h-100">
+  <!-- POS Top Bar -->
+  <div class="pos-topbar px-3 py-2 bg-white border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge bg-primary px-2 py-1">
+        <i class="bi bi-display me-1"></i> Register #01
+      </span>
+      <span class="fw-bold text-dark small">POS Express Checkout</span>
+      <span class="text-muted small">&middot; Cashier: Alex Mercer</span>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge bg-success-subtle text-success border border-success-subtle small">
+        <i class="bi bi-upc-scan me-1"></i> Scanner Active
+      </span>
+      <span class="text-secondary small font-monospace">{{ cart.length }} Item(s) in Register</span>
+    </div>
+  </div>
+
+  <!-- Main POS Split Workspace -->
+  <div class="pos-body flex-grow-1 d-flex flex-column flex-lg-row overflow-hidden">
+    <!-- LEFT PANEL: CART & CHECKOUT (approx 440px on desktop) -->
+    <section class="pos-cart-panel bg-white border-end d-flex flex-column" aria-label="Customer Cart & Tender">
+      <!-- Customer Bar -->
+      <div class="p-3 border-bottom bg-light">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <label for="customerSelect" class="small fw-bold text-secondary text-uppercase mb-0" style="font-size: 0.7rem; letter-spacing: 0.05em;">
+            Customer Assignment
+          </label>
+          <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 small" (click)="showNewCustomerModal = true" style="font-size: 0.75rem;">
+            <i class="bi bi-person-plus me-1"></i>+ New
+          </button>
+        </div>
+
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
+          <select
+            id="customerSelect"
+            class="form-select form-select-sm"
+            [ngModel]="selectedCustomer"
+            (ngModelChange)="selectCustomer($event)"
+          >
+            <option [ngValue]="null">Walk-in Customer (Standard Retail)</option>
+            <option *ngFor="let c of customers" [ngValue]="c">
+              {{ c.name }} &middot; {{ c.phone }} ({{ c.loyaltyTier }})
+            </option>
+          </select>
+        </div>
+
+        <!-- Attached Customer VIP Pill -->
+        <div *ngIf="selectedCustomer" class="mt-2 p-2 rounded bg-white border d-flex align-items-center justify-content-between small">
+          <div>
+            <strong class="text-dark">{{ selectedCustomer.name }}</strong>
+            <span class="badge bg-warning-subtle text-warning border ms-2">{{ selectedCustomer.loyaltyTier }}</span>
+          </div>
+          <span class="text-muted font-monospace">{{ selectedCustomer.totalVisits }} visits</span>
+        </div>
+      </div>
+
+      <!-- Quick Action Toolbar -->
+      <div class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between gap-2 bg-white">
+        <button
+          type="button"
+          class="btn-app btn-app-subtle btn-app-sm flex-fill justify-content-center"
+          (click)="suspendSale()"
+          [disabled]="cart.length === 0"
+          title="Hold current order"
+        >
+          <i class="bi bi-pause-circle text-warning"></i> Suspend
+        </button>
+        <button
+          type="button"
+          class="btn-app btn-app-subtle btn-app-sm flex-fill justify-content-center"
+          (click)="applyDiscount(15.0)"
+          [disabled]="cart.length === 0"
+          title="Apply $15 Promotional Voucher"
+        >
+          <i class="bi bi-tag text-success"></i> -$15 Promo
+        </button>
+        <button
+          type="button"
+          class="btn-app btn-app-subtle btn-app-sm flex-fill justify-content-center text-danger"
+          (click)="clearCart()"
+          [disabled]="cart.length === 0"
+          title="Clear all items"
+        >
+          <i class="bi bi-trash"></i> Reset
+        </button>
+      </div>
+
+      <!-- Cart Items Table List -->
+      <div class="cart-items-scroll flex-grow-1 overflow-y-auto">
+        <div *ngIf="cart.length === 0" class="p-5 text-center text-muted">
+          <i class="bi bi-cart3 fs-1 d-block mb-2 text-secondary opacity-50"></i>
+          <div class="fw-semibold">Register is empty</div>
+          <small>Scan a barcode/IMEI or select items from the catalog on the right.</small>
+        </div>
+
+        <table *ngIf="cart.length > 0" class="app-table cart-table mb-0">
+          <thead>
+            <tr>
+              <th scope="col" style="inline-size: 50%;">Item</th>
+              <th scope="col" class="text-center" style="inline-size: 20%;">Qty</th>
+              <th scope="col" class="col-numeric" style="inline-size: 20%;">Subtotal</th>
+              <th scope="col" class="text-end" style="inline-size: 10%;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of cart; let idx = index">
+              <td>
+                <div class="fw-semibold text-dark small lh-sm">{{ item.title }}</div>
+                <div class="text-muted font-monospace" style="font-size: 0.6875rem;">
+                  {{ item.identifier }}
+                </div>
+                <div class="text-secondary small font-monospace">
+                  ${{ item.unitPrice | number:'1.2-2' }}
+                </div>
+              </td>
+              <td class="text-center">
+                <div class="d-inline-flex align-items-center border rounded bg-light">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-link text-dark p-0 px-2 text-decoration-none border-0"
+                    (click)="updateQuantity(idx, -1)"
+                    aria-label="Decrease quantity"
+                  >
+                    -
+                  </button>
+                  <span class="px-2 small fw-bold font-monospace">{{ item.quantity }}</span>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-link text-dark p-0 px-2 text-decoration-none border-0"
+                    (click)="updateQuantity(idx, 1)"
+                    [disabled]="item.type === 'phone'"
+                    aria-label="Increase quantity"
+                  >
+                    +
+                  </button>
+                </div>
+              </td>
+              <td class="col-numeric col-mono fw-bold text-dark">
+                ${{ item.subtotal | number:'1.2-2' }}
+              </td>
+              <td class="text-end">
+                <button
+                  type="button"
+                  class="btn btn-sm text-danger border-0 p-1"
+                  (click)="removeFromCart(idx)"
+                  aria-label="Remove item"
+                >
+                  <i class="bi bi-x-lg" style="font-size: 0.8rem;"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Bottom Checkout Totals & Payment Action (matching uploaded POS reference) -->
+      <div class="cart-totals-panel p-3 border-top bg-light">
+        <div class="d-flex justify-content-between mb-1 small text-secondary">
+          <span>Subtotal:</span>
+          <span class="font-monospace fw-semibold text-dark">${{ subtotal | number:'1.2-2' }}</span>
+        </div>
+        <div class="d-flex justify-content-between mb-1 small text-secondary" *ngIf="discountAmount > 0">
+          <span>Promo Discount:</span>
+          <span class="font-monospace text-danger">-${{ discountAmount | number:'1.2-2' }}</span>
+        </div>
+        <div class="d-flex justify-content-between mb-2 small text-secondary">
+          <span>Tax / VAT (5%):</span>
+          <span class="font-monospace">${{ taxAmount | number:'1.2-2' }}</span>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between py-2 border-top border-dark-subtle mb-3">
+          <div>
+            <span class="text-uppercase small text-muted fw-bold d-block lh-1" style="font-size: 0.75rem;">Total Payable</span>
+            <div class="h2 fw-bold text-dark font-monospace mb-0 lh-1">
+              ${{ totalPayable | number:'1.2-2' }}
+            </div>
+          </div>
+
+          <!-- Big Prominent Payment Button -->
+          <button
+            type="button"
+            class="btn btn-primary btn-lg px-4 py-3 d-flex align-items-center gap-2 shadow-sm rounded-3"
+            style="min-inline-size: 160px; justify-content: center; background-color: #2563eb;"
+            (click)="openPayment()"
+            [disabled]="cart.length === 0"
+          >
+            <i class="bi bi-credit-card-2-front-fill fs-4" aria-hidden="true"></i>
+            <span class="fw-bold fs-5">TENDER</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: BARCODE SEARCH & PRODUCT FAST-PICK GRID -->
+    <section class="pos-catalog-panel flex-grow-1 p-3 d-flex flex-column bg-light" aria-label="Product Search and Catalog">
+      <!-- Top Scanner Barcode Input -->
+      <div class="search-input-group mb-3">
+        <i class="bi bi-upc-scan search-icon fs-5 text-primary" aria-hidden="true"></i>
+        <input
+          type="search"
+          class="app-input form-control-lg fs-6 py-2 shadow-xs"
+          placeholder="Type product name, model, scan barcode or IMEI..."
+          [formControl]="barcodeInput"
+        />
+        <span class="search-shortcut">Auto-Scan</span>
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div class="category-pills-bar d-flex gap-2 overflow-x-auto pb-2 mb-3">
+        <button
+          *ngFor="let cat of categories"
+          type="button"
+          class="btn btn-sm rounded-pill px-3 py-1 text-nowrap"
+          [ngClass]="selectedCategory === cat ? 'btn-dark' : 'btn-outline-secondary bg-white text-dark border'"
+          (click)="setCategory(cat)"
+        >
+          {{ cat }}
+        </button>
+      </div>
+
+      <!-- Product Cards Grid -->
+      <div class="catalog-grid-wrapper flex-grow-1 overflow-y-auto pe-1">
+        <div class="row g-2 g-xl-3">
+          <div *ngFor="let item of filteredCatalog" class="col-6 col-sm-4 col-md-3 col-xl-3">
+            <button
+              type="button"
+              class="pos-product-card card p-3 h-100 border text-start w-100 bg-white"
+              (click)="addToCart(item)"
+              [class.border-primary]="item.type === 'phone'"
+            >
+              <div class="d-flex align-items-start justify-content-between mb-2">
+                <span
+                  class="badge small"
+                  [ngClass]="item.type === 'phone' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-light text-secondary border'"
+                >
+                  {{ item.brand }}
+                </span>
+                <span
+                  class="stock-indicator-pill font-monospace"
+                  [ngClass]="item.stock <= 5 ? 'bg-danger text-white' : (item.stock <= 10 ? 'bg-warning text-dark' : 'bg-success text-white')"
+                >
+                  {{ item.stock }} in stock
+                </span>
+              </div>
+
+              <div class="product-title fw-bold text-dark mb-1 lh-sm">
+                {{ item.name }}
+              </div>
+
+              <div class="product-subtext text-muted font-monospace small mb-3 text-truncate" style="font-size: 0.75rem;">
+                <span *ngIf="item.type === 'phone'">IMEI: {{ item.identifier }}</span>
+                <span *ngIf="item.type !== 'phone'">SKU: {{ item.identifier }}</span>
+              </div>
+
+              <div class="mt-auto d-flex align-items-center justify-content-between pt-2 border-top">
+                <span class="h6 fw-bold text-dark mb-0 font-monospace">
+                  ${{ item.price | number:'1.2-2' }}
+                </span>
+                <span class="btn-add-mini rounded-circle d-flex align-items-center justify-content-center text-primary bg-primary-subtle">
+                  <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                </span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- PAYMENT TENDER MODAL -->
+<div *ngIf="showPaymentModal" class="drawer-backdrop" (click)="showPaymentModal = false" aria-hidden="true"></div>
+<div *ngIf="showPaymentModal" class="modal-dialog-custom modal-payment shadow-lg" role="dialog" aria-modal="true" aria-label="Tender Payment">
+  <div class="modal-content bg-white p-4 rounded-3 border">
+    <div class="d-flex align-items-center justify-content-between pb-3 border-bottom mb-3">
+      <div>
+        <h2 class="h5 fw-bold mb-0 text-dark">Tender Payment</h2>
+        <small class="text-muted">Total Payable: <strong class="font-monospace text-primary">${{ totalPayable | number:'1.2-2' }}</strong></small>
+      </div>
+      <button type="button" class="btn-close" (click)="showPaymentModal = false" aria-label="Close"></button>
+    </div>
+
+    <!-- Payment Mode Tabs -->
+    <div class="row g-2 mb-3">
+      <div class="col-4">
+        <button
+          type="button"
+          class="btn w-100 p-2 text-center border"
+          [ngClass]="paymentMethod === 'Credit/Debit Card' ? 'btn-primary' : 'btn-light'"
+          (click)="paymentMethod = 'Credit/Debit Card'"
+        >
+          <i class="bi bi-credit-card d-block fs-4 mb-1"></i>
+          <span class="small fw-semibold">Card Terminal</span>
+        </button>
+      </div>
+      <div class="col-4">
+        <button
+          type="button"
+          class="btn w-100 p-2 text-center border"
+          [ngClass]="paymentMethod === 'Cash' ? 'btn-primary' : 'btn-light'"
+          (click)="paymentMethod = 'Cash'"
+        >
+          <i class="bi bi-cash-stack d-block fs-4 mb-1"></i>
+          <span class="small fw-semibold">Cash Tender</span>
+        </button>
+      </div>
+      <div class="col-4">
+        <button
+          type="button"
+          class="btn w-100 p-2 text-center border"
+          [ngClass]="paymentMethod === 'Bank Transfer' ? 'btn-primary' : 'btn-light'"
+          (click)="paymentMethod = 'Bank Transfer'"
+        >
+          <i class="bi bi-bank d-block fs-4 mb-1"></i>
+          <span class="small fw-semibold">Wire / QR Pay</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Cash Tender Calculator -->
+    <div *ngIf="paymentMethod === 'Cash'" class="p-3 rounded bg-light border mb-3">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <label for="cashInput" class="small fw-semibold text-secondary mb-0">Cash Tendered ($):</label>
+        <button type="button" class="btn btn-sm btn-link p-0 text-primary small text-decoration-none" (click)="setExactCash()">
+          Exact Amount
+        </button>
+      </div>
+      <div class="input-group mb-2">
+        <span class="input-group-text">$</span>
+        <input id="cashInput" type="number" class="form-control form-control-lg font-monospace fw-bold" [(ngModel)]="cashTendered" />
+      </div>
+
+      <!-- Quick Bill Buttons -->
+      <div class="d-flex gap-2 mb-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" (click)="addCash(20)">+$20</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" (click)="addCash(50)">+$50</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" (click)="addCash(100)">+$100</button>
+      </div>
+
+      <div class="d-flex align-items-center justify-content-between pt-2 border-top">
+        <span class="small fw-bold text-dark">Change Due:</span>
+        <span class="h5 mb-0 fw-bold font-monospace" [ngClass]="cashTendered >= totalPayable ? 'text-success' : 'text-danger'">
+          ${{ changeDue | number:'1.2-2' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Card / Digital Mode Info -->
+    <div *ngIf="paymentMethod !== 'Cash'" class="p-3 rounded bg-light border mb-3 text-center">
+      <i class="bi bi-terminal fs-2 text-primary d-block mb-1"></i>
+      <div class="small fw-bold text-dark">POS Card Terminal Ready</div>
+      <small class="text-muted">Tap, Insert chip card or scan dynamic QR on customer display.</small>
+    </div>
+
+    <!-- Actions -->
+    <div class="d-flex gap-2 pt-2 border-top">
+      <button type="button" class="btn-app btn-app-secondary w-50" (click)="showPaymentModal = false">
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="btn-app btn-app-primary w-50 py-2 fs-6 fw-bold"
+        (click)="completeSale()"
+        [disabled]="paymentMethod === 'Cash' && cashTendered < totalPayable"
+      >
+        <i class="bi bi-check2-circle"></i> Complete Sale
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- RECEIPT MODAL -->
+<div *ngIf="showReceiptModal && completedSale" class="drawer-backdrop" (click)="closeReceipt()" aria-hidden="true"></div>
+<div *ngIf="showReceiptModal && completedSale" class="modal-dialog-receipt" role="dialog" aria-modal="true" aria-label="Thermal Receipt">
+  <div class="printable-receipt bg-white p-4 shadow-lg rounded border">
+    <div class="text-center mb-3">
+      <div class="fw-bold text-dark fs-5">ApexCellular POS</div>
+      <div class="small text-muted">Downtown Flagship Store #01</div>
+      <div class="small text-muted">Tel: +1 (555) 019-2834</div>
+      <div class="small font-monospace text-secondary mt-1">TAX ID: US-849201948</div>
+    </div>
+
+    <div class="border-top border-bottom border-dashed py-2 my-2 small">
+      <div class="d-flex justify-content-between">
+        <span>Invoice:</span>
+        <strong class="font-monospace">{{ completedSale.invoiceNumber }}</strong>
+      </div>
+      <div class="d-flex justify-content-between">
+        <span>Date:</span>
+        <span>{{ completedSale.timestamp }}</span>
+      </div>
+      <div class="d-flex justify-content-between">
+        <span>Customer:</span>
+        <span>{{ completedSale.customerName }}</span>
+      </div>
+      <div class="d-flex justify-content-between">
+        <span>Cashier:</span>
+        <span>{{ completedSale.cashierName }}</span>
+      </div>
+    </div>
+
+    <div class="py-2 small">
+      <div *ngFor="let it of completedSale.items" class="mb-2">
+        <div class="d-flex justify-content-between">
+          <span class="fw-bold text-dark">{{ it.name }}</span>
+          <span class="font-monospace">${{ (it.price * it.quantity) | number:'1.2-2' }}</span>
+        </div>
+        <div class="text-muted d-flex justify-content-between" style="font-size: 0.75rem;">
+          <span>{{ it.quantity }} x ${{ it.price | number:'1.2-2' }}</span>
+          <span *ngIf="it.imei" class="font-monospace">IMEI: {{ it.imei }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="border-top border-dashed pt-2 small">
+      <div class="d-flex justify-content-between mb-1">
+        <span>Subtotal:</span>
+        <span class="font-monospace">${{ completedSale.subtotal | number:'1.2-2' }}</span>
+      </div>
+      <div class="d-flex justify-content-between mb-1" *ngIf="completedSale.discount > 0">
+        <span>Discount:</span>
+        <span class="font-monospace text-danger">-${{ completedSale.discount | number:'1.2-2' }}</span>
+      </div>
+      <div class="d-flex justify-content-between mb-1">
+        <span>Sales Tax (5%):</span>
+        <span class="font-monospace">${{ completedSale.tax | number:'1.2-2' }}</span>
+      </div>
+      <div class="d-flex justify-content-between fw-bold fs-6 text-dark pt-1 border-top">
+        <span>TOTAL DUE:</span>
+        <span class="font-monospace">${{ completedSale.total | number:'1.2-2' }}</span>
+      </div>
+      <div class="d-flex justify-content-between text-muted small mt-1">
+        <span>Paid via:</span>
+        <span>{{ completedSale.paymentMethod }}</span>
+      </div>
+    </div>
+
+    <div class="text-center mt-3 pt-2 border-top border-dashed small text-muted" style="font-size: 0.7rem;">
+      Thank you for your business!<br />
+      IMEI devices are backed by 90-day store warranty.<br />
+      Returns accepted within 14 days with original receipt.
+    </div>
+
+    <div class="d-flex gap-2 mt-3 pt-2 border-top no-print">
+      <button type="button" class="btn-app btn-app-secondary w-50" (click)="closeReceipt()">
+        Close
+      </button>
+      <button type="button" class="btn-app btn-app-primary w-50" (click)="printReceipt()">
+        <i class="bi bi-printer" aria-hidden="true"></i> Print Receipt
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW CUSTOMER QUICK REGISTRATION MODAL -->
+<div *ngIf="showNewCustomerModal" class="drawer-backdrop" (click)="showNewCustomerModal = false" aria-hidden="true"></div>
+<div *ngIf="showNewCustomerModal" class="modal-dialog-custom shadow-lg" role="dialog" aria-modal="true" aria-label="Quick Add Customer">
+  <div class="modal-content bg-white p-4 rounded-3 border">
+    <div class="d-flex align-items-center justify-content-between pb-2 border-bottom mb-3">
+      <h2 class="h6 fw-bold mb-0 text-dark">Quick Customer Registration</h2>
+      <button type="button" class="btn-close" (click)="showNewCustomerModal = false"></button>
+    </div>
+
+    <div class="mb-3">
+      <label for="custName" class="app-form-label">Customer Full Name <span class="required-star">*</span></label>
+      <input id="custName" type="text" class="app-input" placeholder="e.g. Liam Foster" [(ngModel)]="newCustomerName" />
+    </div>
+
+    <div class="mb-3">
+      <label for="custPhone" class="app-form-label">Phone Number</label>
+      <input id="custPhone" type="tel" class="app-input" placeholder="+1 (555) 000-0000" [(ngModel)]="newCustomerPhone" />
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+      <button type="button" class="btn-app btn-app-secondary" (click)="showNewCustomerModal = false">Cancel</button>
+      <button type="button" class="btn-app btn-app-primary" (click)="saveNewCustomer()" [disabled]="!newCustomerName">
+        Save &amp; Attach to Sale
+      </button>
+    </div>
+  </div>
+</div>

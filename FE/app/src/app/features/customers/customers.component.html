@@ -1,0 +1,118 @@
+<div class="container-fluid px-3 px-lg-4 py-4" style="max-inline-size: 1600px;">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold px-2 py-1">
+          Store Directory
+        </span>
+        <span class="text-muted small">&middot; Customer Relationship &amp; IMEI Registration</span>
+      </div>
+      <h1 class="h3 fw-bold text-dark mb-0">Retail Customers</h1>
+    </div>
+
+    <button type="button" class="btn-app btn-app-primary shadow-xs" (click)="openAddModal()">
+      <i class="bi bi-person-plus-fill" aria-hidden="true"></i>
+      <span>Add New Customer</span>
+    </button>
+  </div>
+
+  <section class="table-container mb-4" aria-label="Customer Directory">
+    <div class="table-toolbar">
+      <div class="search-input-group" style="inline-size: 320px;">
+        <i class="bi bi-search search-icon" aria-hidden="true"></i>
+        <input
+          type="search"
+          class="app-input"
+          placeholder="Search customer name, phone, email..."
+          [formControl]="searchControl"
+        />
+      </div>
+
+      <span class="badge bg-light text-secondary border small">
+        {{ filteredCustomers.length }} Registered Customers
+      </span>
+    </div>
+
+    <div class="data-table-wrapper">
+      <table class="app-table">
+        <thead>
+          <tr>
+            <th scope="col" style="inline-size: 25%;">Customer Profile</th>
+            <th scope="col" style="inline-size: 15%;">Contact Phone</th>
+            <th scope="col" style="inline-size: 15%;">Loyalty Tier</th>
+            <th scope="col" class="col-numeric" style="inline-size: 15%;">Lifetime Spend</th>
+            <th scope="col" class="text-center" style="inline-size: 10%;">Visits</th>
+            <th scope="col" style="inline-size: 20%;">Registered Devices (IMEI)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let c of filteredCustomers">
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="avatar-sm rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center" style="inline-size: 2.25rem; block-size: 2.25rem; font-size: 0.8rem;">
+                  {{ c.name.substring(0, 2).toUpperCase() }}
+                </div>
+                <div>
+                  <div class="fw-bold text-dark lh-sm">{{ c.name }}</div>
+                  <small class="text-muted">{{ c.email }}</small>
+                </div>
+              </div>
+            </td>
+            <td class="font-monospace text-dark">{{ c.phone }}</td>
+            <td>
+              <span
+                class="badge"
+                [ngClass]="c.loyaltyTier === 'Gold VIP' ? 'bg-warning-subtle text-warning border border-warning-subtle' : (c.loyaltyTier === 'Silver' ? 'bg-light text-dark border' : 'bg-light text-secondary border')"
+              >
+                <i class="bi bi-award me-1"></i>{{ c.loyaltyTier }}
+              </span>
+            </td>
+            <td class="col-numeric col-mono fw-bold text-dark">
+              ${{ c.totalSpent | number:'1.2-2' }}
+            </td>
+            <td class="text-center font-monospace">{{ c.totalVisits }}</td>
+            <td>
+              <div *ngIf="c.registeredImeis.length === 0" class="text-muted small">None on file</div>
+              <div *ngFor="let imei of c.registeredImeis" class="badge bg-light text-dark border font-monospace me-1 mb-1" style="font-size: 0.75rem;">
+                IMEI: {{ imei }}
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<!-- ADD CUSTOMER MODAL -->
+<div *ngIf="showAddModal" class="drawer-backdrop" (click)="showAddModal = false" aria-hidden="true"></div>
+<div *ngIf="showAddModal" class="modal-dialog-custom shadow-lg" role="dialog" aria-modal="true" aria-label="Add Customer">
+  <div class="modal-content bg-white p-4 rounded-3 border">
+    <div class="d-flex align-items-center justify-content-between pb-2 border-bottom mb-3">
+      <h2 class="h6 fw-bold mb-0 text-dark">Add New Retail Customer</h2>
+      <button type="button" class="btn-close" (click)="showAddModal = false"></button>
+    </div>
+
+    <div class="mb-3">
+      <label for="cName" class="app-form-label">Full Name <span class="required-star">*</span></label>
+      <input id="cName" type="text" class="app-input" placeholder="e.g. Jessica Taylor" [(ngModel)]="newName" />
+    </div>
+
+    <div class="mb-3">
+      <label for="cPhone" class="app-form-label">Phone Number <span class="required-star">*</span></label>
+      <input id="cPhone" type="tel" class="app-input" placeholder="+1 (555) 782-9901" [(ngModel)]="newPhone" />
+    </div>
+
+    <div class="mb-3">
+      <label for="cEmail" class="app-form-label">Email Address</label>
+      <input id="cEmail" type="email" class="app-input" placeholder="jessica@example.com" [(ngModel)]="newEmail" />
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+      <button type="button" class="btn-app btn-app-secondary" (click)="showAddModal = false">Cancel</button>
+      <button type="button" class="btn-app btn-app-primary" (click)="saveCustomer()" [disabled]="!newName || !newPhone">
+        Register Customer
+      </button>
+    </div>
+  </div>
+</div>

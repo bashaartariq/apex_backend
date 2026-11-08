@@ -1,0 +1,82 @@
+.pos-workspace {
+  block-size: calc(100vh - var(--ms-header-height));
+  block-size: calc(100dvh - var(--ms-header-height));
+  background-color: var(--ms-bg-app);
+}
+
+.pos-cart-panel {
+  inline-size: 100%;
+  max-inline-size: 100%;
+  border-inline-end: 1px solid var(--ms-border-subtle);
+
+  @media (min-width: 992px) {
+    inline-size: 440px;
+    min-inline-size: 400px;
+    max-inline-size: 480px;
+  }
+}
+
+.cart-table {
+  tbody td {
+    padding: 0.65rem 0.75rem;
+  }
+}
+
+.pos-product-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+  border-radius: var(--ms-radius-md);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--ms-shadow-md);
+    border-color: var(--ms-brand-primary) !important;
+  }
+
+  .product-title {
+    font-size: var(--ms-text-sm);
+  }
+
+  .stock-indicator-pill {
+    font-size: 0.6875rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: var(--ms-radius-full);
+  }
+
+  .btn-add-mini {
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+  }
+}
+
+.modal-payment {
+  position: fixed;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%);
+  inline-size: 500px;
+  max-inline-size: 94vw;
+  z-index: 1080;
+}
+
+.border-dashed {
+  border-style: dashed !important;
+}
+
+.modal-dialog-receipt {
+  position: fixed;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%);
+  inline-size: 380px;
+  max-inline-size: 92vw;
+  max-block-size: 90vh;
+  overflow-y: auto;
+  z-index: 1085;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

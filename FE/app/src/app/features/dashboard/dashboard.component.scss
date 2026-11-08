@@ -1,0 +1,25 @@
+.dashboard-page {
+  max-inline-size: 1600px;
+}
+
+.border-dashed {
+  border-style: dashed !important;
+}
+
+.modal-dialog-receipt {
+  position: fixed;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%);
+  inline-size: 380px;
+  max-inline-size: 92vw;
+  max-block-size: 90vh;
+  overflow-y: auto;
+  z-index: 1080;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

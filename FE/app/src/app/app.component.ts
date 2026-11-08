@@ -13,6 +13,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
 
   sidebarOpen = false;
+  sidebarCollapsed = false;
   apiConnected = false;
   apiChecking = false;
   activeShopId: string | null = null;
@@ -23,6 +24,12 @@ export class AppComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    // Restore collapsed sidebar preference if saved
+    const savedCollapse = localStorage.getItem('apex_sidebar_collapsed');
+    if (savedCollapse === 'true') {
+      this.sidebarCollapsed = true;
+    }
+
     this.statusService.state$
       .pipe(takeUntil(this.destroy$))
       .subscribe((state) => {
@@ -35,6 +42,9 @@ export class AppComponent implements OnInit, OnDestroy {
       .subscribe((shopId) => {
         this.activeShopId = shopId;
       });
+
+    // Check connectivity on startup
+    this.statusService.checkConnectivity().subscribe();
   }
 
   ngOnDestroy(): void {
@@ -48,5 +58,10 @@ export class AppComponent implements OnInit, OnDestroy {
 
   closeSidebar(): void {
     this.sidebarOpen = false;
+  }
+
+  toggleCollapse(): void {
+    this.sidebarCollapsed = !this.sidebarCollapsed;
+    localStorage.setItem('apex_sidebar_collapsed', String(this.sidebarCollapsed));
   }
 }

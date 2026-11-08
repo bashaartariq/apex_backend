@@ -1,38 +1,172 @@
-<header class="app-header shadow-sm bg-white border-bottom">
+<header class="app-header shadow-xs bg-white border-bottom position-sticky top-0" style="z-index: 1030;">
   <div class="container-fluid px-3 d-flex align-items-center justify-content-between h-100">
-    <div class="d-flex align-items-center gap-3">
+    <!-- Left Section: Toggle & Search -->
+    <div class="d-flex align-items-center gap-2 gap-md-3">
+      <!-- Mobile sidebar toggle -->
       <button
         type="button"
-        class="btn btn-outline-secondary d-md-none sidebar-toggle-btn"
-        (click)="onToggleClick()"
-        [attr.aria-expanded]="sidebarOpen"
-        aria-controls="app-sidebar"
-        aria-label="Toggle navigation menu"
+        class="btn-icon d-md-none"
+        (click)="toggleSidebar.emit()"
+        aria-label="Toggle navigation drawer"
       >
         <i class="bi bi-list fs-5" aria-hidden="true"></i>
       </button>
 
-      <div class="d-flex align-items-center gap-2">
-        <span class="brand-icon rounded-circle d-flex align-items-center justify-content-center text-white bg-primary">
-          <i class="bi bi-phone" aria-hidden="true"></i>
-        </span>
-        <div>
-          <span class="brand-title fw-bold text-dark d-block lh-1">{{ appTitle }}</span>
-          <small class="text-muted d-none d-sm-inline font-monospace">Foundation &middot; Step 1</small>
+      <!-- Desktop sidebar collapse toggle -->
+      <button
+        type="button"
+        class="btn-icon d-none d-md-inline-flex"
+        (click)="toggleCollapse.emit()"
+        [title]="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        aria-label="Toggle sidebar collapse"
+      >
+        <i class="bi" [ngClass]="sidebarCollapsed ? 'bi-layout-sidebar-inset' : 'bi-layout-sidebar'" aria-hidden="true"></i>
+      </button>
+
+      <!-- Shop / Tenant Selector Dropdown -->
+      <div class="position-relative">
+        <button
+          type="button"
+          class="tenant-selector-btn d-flex align-items-center gap-2 border rounded px-2 py-1 bg-light"
+          (click)="showShopSelector = !showShopSelector; showNotifications = false; showProfileMenu = false"
+          aria-haspopup="true"
+          [attr.aria-expanded]="showShopSelector"
+        >
+          <span class="tenant-dot"></span>
+          <div class="text-start d-none d-sm-block">
+            <span class="d-block fw-semibold text-dark lh-1 small">{{ currentShopName }}</span>
+            <small class="text-muted font-monospace" style="font-size: 0.6875rem;">{{ activeShopId || 'SHOP-DOWNTOWN-01' }}</small>
+          </div>
+          <i class="bi bi-chevron-down text-muted small ms-1" aria-hidden="true"></i>
+        </button>
+
+        <!-- Dropdown Menu -->
+        <div *ngIf="showShopSelector" class="custom-dropdown shadow-lg border rounded p-1 bg-white position-absolute start-0 mt-1" style="inline-size: 240px; z-index: 1050;">
+          <div class="px-3 py-2 text-uppercase text-muted fw-bold border-bottom" style="font-size: 0.6875rem; letter-spacing: 0.05em;">
+            Switch Store Location
+          </div>
+          <div class="py-1">
+            <button
+              *ngFor="let s of shops"
+              type="button"
+              class="dropdown-shop-item w-100 text-start px-3 py-2 d-flex align-items-center justify-content-between border-0 bg-transparent rounded"
+              [class.active]="s.id === (activeShopId || 'SHOP-DOWNTOWN-01')"
+              (click)="switchShop(s)"
+            >
+              <div>
+                <div class="fw-semibold text-dark small">{{ s.name }}</div>
+                <div class="text-muted" style="font-size: 0.75rem;">{{ s.location }}</div>
+              </div>
+              <i *ngIf="s.id === (activeShopId || 'SHOP-DOWNTOWN-01')" class="bi bi-check text-primary fs-5" aria-hidden="true"></i>
+            </button>
+          </div>
         </div>
+      </div>
+
+      <!-- Global Search Input (Linear / Invento style) -->
+      <div class="search-input-group d-none d-lg-flex" style="inline-size: 300px;">
+        <i class="bi bi-search search-icon" aria-hidden="true"></i>
+        <input
+          #searchBox
+          type="search"
+          class="app-input"
+          placeholder="Search devices, IMEI, customer..."
+          (keyup.enter)="onGlobalSearch(searchBox.value)"
+        />
+        <span class="search-shortcut">⌘K</span>
       </div>
     </div>
 
+    <!-- Right Section: Quick Action, Status, Notifications & Profile -->
     <div class="d-flex align-items-center gap-2 gap-sm-3">
-      <div *ngIf="activeShopId" class="badge bg-light text-dark border d-none d-sm-inline-flex align-items-center gap-1 py-2 px-2">
-        <i class="bi bi-shop text-primary" aria-hidden="true"></i>
-        <span>Tenant: <strong class="font-monospace">{{ activeShopId }}</strong></span>
-      </div>
+      <!-- Quick POS Sale CTA -->
+      <button
+        type="button"
+        class="btn-app btn-app-primary btn-app-sm shadow-xs d-none d-sm-inline-flex align-items-center gap-2"
+        (click)="goToPos()"
+      >
+        <i class="bi bi-receipt-cutoff" aria-hidden="true"></i>
+        <span>New Sale / POS</span>
+      </button>
 
+      <!-- System Connectivity Badge (from Step 1) -->
       <app-status-badge
         [label]="connectionLabel"
         [tone]="connectionTone"
+        class="d-none d-md-inline-block"
       ></app-status-badge>
+
+      <!-- Notifications Bell -->
+      <div class="position-relative">
+        <button
+          type="button"
+          class="btn-icon position-relative"
+          (click)="showNotifications = !showNotifications; showShopSelector = false; showProfileMenu = false"
+          aria-label="View notifications"
+          [attr.aria-expanded]="showNotifications"
+        >
+          <i class="bi bi-bell fs-5 text-secondary" aria-hidden="true"></i>
+          <span class="notification-badge-dot"></span>
+        </button>
+
+        <!-- Notifications Dropdown -->
+        <div *ngIf="showNotifications" class="custom-dropdown shadow-lg border rounded bg-white position-absolute end-0 mt-2" style="inline-size: 320px; z-index: 1050;">
+          <div class="p-3 border-bottom d-flex align-items-center justify-content-between">
+            <span class="fw-bold small text-dark">Notifications (3)</span>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.7rem;">Live</span>
+          </div>
+          <div class="notification-list p-1" style="max-block-size: 260px; overflow-y: auto;">
+            <div *ngFor="let n of notifications" class="p-2 rounded border-bottom-subtle hover-bg-subtle d-flex align-items-start gap-2">
+              <i class="bi mt-1" [ngClass]="n.icon"></i>
+              <div class="flex-grow-1">
+                <div class="fw-semibold small text-dark lh-1 mb-1">{{ n.title }}</div>
+                <div class="text-secondary small lh-sm" style="font-size: 0.75rem;">{{ n.text }}</div>
+                <span class="text-muted" style="font-size: 0.6875rem;">{{ n.time }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Profile Menu -->
+      <div class="position-relative">
+        <button
+          type="button"
+          class="user-profile-btn d-flex align-items-center gap-2 border-0 bg-transparent p-1 rounded"
+          (click)="showProfileMenu = !showProfileMenu; showNotifications = false; showShopSelector = false"
+          [attr.aria-expanded]="showProfileMenu"
+        >
+          <div class="avatar-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center">
+            AM
+          </div>
+          <div class="text-start d-none d-xl-block">
+            <span class="d-block fw-semibold text-dark small lh-1">Alex Mercer</span>
+            <small class="text-secondary" style="font-size: 0.6875rem;">Store Manager</small>
+          </div>
+          <i class="bi bi-chevron-down text-muted small d-none d-xl-inline" aria-hidden="true"></i>
+        </button>
+
+        <!-- Profile Dropdown Menu -->
+        <div *ngIf="showProfileMenu" class="custom-dropdown shadow-lg border rounded p-1 bg-white position-absolute end-0 mt-2" style="inline-size: 200px; z-index: 1050;">
+          <div class="px-3 py-2 border-bottom">
+            <div class="fw-bold small text-dark">Alex Mercer</div>
+            <div class="text-muted" style="font-size: 0.75rem;">alex@apexcellular.io</div>
+            <span class="badge bg-light text-dark border mt-1" style="font-size: 0.65rem;">Role: Store Manager</span>
+          </div>
+          <div class="py-1">
+            <a routerLink="/settings" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 text-decoration-none text-dark" (click)="showProfileMenu = false">
+              <i class="bi bi-gear" aria-hidden="true"></i> Store Settings
+            </a>
+            <a routerLink="/system" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 text-decoration-none text-dark" (click)="showProfileMenu = false">
+              <i class="bi bi-hdd-network" aria-hidden="true"></i> System Health &amp; API
+            </a>
+            <div class="dropdown-divider my-1"></div>
+            <button type="button" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 text-danger border-0 bg-transparent w-100 text-start" (click)="showProfileMenu = false">
+              <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Lock Terminal
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </header>

@@ -12,7 +12,7 @@
 .app-main {
   background-color: var(--ms-bg-app);
   overflow-y: auto;
-  min-inline-size: 0; /* Prevents flex children from blowing out layout */
+  min-inline-size: 0;
   outline: none;
 }
 

@@ -1,0 +1,560 @@
+<div class="inventory-page container-fluid px-3 px-lg-4 py-4">
+  <!-- Page Header -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold px-2 py-1">
+          Store Stock Register
+        </span>
+        <span class="text-muted small">&middot; Multi-Tenant Scoped (SHOP-DOWNTOWN-01)</span>
+      </div>
+      <h1 class="h3 fw-bold text-dark mb-0">Inventory &amp; Devices</h1>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+      <button type="button" class="btn-app btn-app-secondary" (click)="openAddAccessory()">
+        <i class="bi bi-plus-circle" aria-hidden="true"></i>
+        <span>Add Accessory Stock</span>
+      </button>
+
+      <button type="button" class="btn-app btn-app-primary shadow-xs" (click)="openAddPhone()">
+        <i class="bi bi-phone-fill" aria-hidden="true"></i>
+        <span>Add Mobile Phone (IMEI)</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Primary Sub-navigation Tabs -->
+  <div class="app-tabs">
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="activeTab === 'phones'"
+      (click)="setTab('phones')"
+    >
+      <i class="bi bi-phone" aria-hidden="true"></i>
+      <span>Mobile Phones</span>
+      <span class="tab-badge font-monospace">{{ phones.length }}</span>
+    </button>
+
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="activeTab === 'accessories'"
+      (click)="setTab('accessories')"
+    >
+      <i class="bi bi-headphones" aria-hidden="true"></i>
+      <span>Accessories &amp; Parts</span>
+      <span class="tab-badge font-monospace">{{ accessories.length }}</span>
+    </button>
+
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="activeTab === 'reorder'"
+      (click)="setTab('reorder')"
+    >
+      <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+      <span>Reorder Watchlist</span>
+      <span class="badge bg-warning text-dark font-monospace" style="font-size: 0.7rem;">4 Alerts</span>
+    </button>
+  </div>
+
+  <!-- =========================================================================
+       TAB 1: MOBILE PHONES TABLE
+       ========================================================================= -->
+  <section *ngIf="activeTab === 'phones'" class="table-container mb-4" aria-label="Mobile Phones Catalog">
+    <!-- Filters Toolbar -->
+    <div class="table-toolbar">
+      <div class="d-flex align-items-center gap-2 flex-grow-1 flex-wrap">
+        <!-- Search Input -->
+        <div class="search-input-group" style="inline-size: 280px;">
+          <i class="bi bi-search search-icon" aria-hidden="true"></i>
+          <input
+            type="search"
+            class="app-input"
+            placeholder="Search by model, brand, IMEI..."
+            [formControl]="phoneSearch"
+          />
+        </div>
+
+        <!-- Brand Filter -->
+        <select class="app-input" style="inline-size: 150px;" [(ngModel)]="selectedBrand" (ngModelChange)="applyPhoneFilters()">
+          <option value="All">All Brands</option>
+          <option value="Apple">Apple</option>
+          <option value="Samsung">Samsung</option>
+          <option value="Google">Google</option>
+          <option value="Xiaomi">Xiaomi</option>
+        </select>
+
+        <!-- Condition Filter -->
+        <select class="app-input" style="inline-size: 170px;" [(ngModel)]="selectedCondition" (ngModelChange)="applyPhoneFilters()">
+          <option value="All">All Conditions</option>
+          <option value="Brand New">Brand New</option>
+          <option value="Pre-Owned Grade A">Pre-Owned Grade A</option>
+          <option value="Pre-Owned Grade B">Pre-Owned Grade B</option>
+        </select>
+
+        <!-- Status Filter -->
+        <select class="app-input" style="inline-size: 140px;" [(ngModel)]="selectedStatus" (ngModelChange)="applyPhoneFilters()">
+          <option value="All">All Statuses</option>
+          <option value="In Stock">In Stock</option>
+          <option value="Reserved">Reserved</option>
+          <option value="Sold">Sold</option>
+        </select>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-light text-secondary border small">
+          Showing {{ filteredPhones.length }} of {{ phones.length }} devices
+        </span>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="data-table-wrapper">
+      <table class="app-table">
+        <thead>
+          <tr>
+            <th scope="col" style="inline-size: 26%;">Device Model &amp; Specs</th>
+            <th scope="col" style="inline-size: 20%;">IMEI 1 (Hardware Serial)</th>
+            <th scope="col" style="inline-size: 14%;">Condition</th>
+            <th scope="col" style="inline-size: 10%;">Battery</th>
+            <th scope="col" class="col-numeric" style="inline-size: 10%;">Wholesale</th>
+            <th scope="col" class="col-numeric" style="inline-size: 10%;">Retail</th>
+            <th scope="col" style="inline-size: 10%;">Status</th>
+            <th scope="col" class="text-end" style="inline-size: 10%;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let phone of filteredPhones" (click)="openPhoneDrawer(phone)" style="cursor: pointer;">
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="brand-icon-sm rounded bg-light border p-1 text-center font-monospace small fw-bold" style="inline-size: 2rem;">
+                  {{ phone.brand.substring(0, 3).toUpperCase() }}
+                </div>
+                <div>
+                  <div class="fw-bold text-dark lh-sm">{{ phone.brand }} {{ phone.model }}</div>
+                  <small class="text-muted">{{ phone.storage }} &middot; {{ phone.ram }} &middot; {{ phone.color }}</small>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="font-monospace fw-semibold text-dark">{{ phone.imei1 }}</span>
+              <small *ngIf="phone.imei2" class="d-block text-muted font-monospace" style="font-size: 0.7rem;">
+                SIM 2: {{ phone.imei2 }}
+              </small>
+            </td>
+            <td>
+              <span
+                class="badge"
+                [ngClass]="phone.condition === 'Brand New' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-secondary-subtle text-dark border'"
+              >
+                {{ phone.condition }}
+              </span>
+            </td>
+            <td>
+              <span class="small font-monospace fw-semibold" [ngClass]="(phone.batteryHealth || 100) >= 90 ? 'text-success' : 'text-warning'">
+                <i class="bi bi-battery-charging me-1"></i>{{ phone.batteryHealth || 100 }}%
+              </span>
+            </td>
+            <td class="col-numeric col-mono text-secondary">
+              ${{ phone.purchasePrice | number:'1.2-2' }}
+            </td>
+            <td class="col-numeric col-mono fw-bold text-dark">
+              ${{ phone.sellingPrice | number:'1.2-2' }}
+            </td>
+            <td>
+              <app-status-badge
+                [label]="phone.status"
+                [tone]="phone.status === 'In Stock' ? 'success' : (phone.status === 'Reserved' ? 'brand' : 'neutral')"
+              ></app-status-badge>
+            </td>
+            <td class="text-end" (click)="$event.stopPropagation()">
+              <div class="d-inline-flex gap-1">
+                <button
+                  type="button"
+                  class="btn-app btn-app-subtle btn-app-sm text-primary"
+                  (click)="openPhoneDrawer(phone)"
+                  title="Inspect Full Specifications"
+                >
+                  <i class="bi bi-layout-sidebar-reverse" aria-hidden="true"></i>
+                </button>
+                <button
+                  type="button"
+                  class="btn-app btn-app-subtle btn-app-sm text-danger"
+                  (click)="confirmDeletePhone(phone)"
+                  title="Remove device"
+                >
+                  <i class="bi bi-trash" aria-hidden="true"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-pagination">
+      <span>Page 1 of 1 &middot; 7 items listed</span>
+      <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn-app btn-app-secondary btn-app-sm" disabled>Previous</button>
+        <button type="button" class="btn-app btn-app-secondary btn-app-sm" disabled>Next</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       TAB 2: ACCESSORIES & PARTS TABLE
+       ========================================================================= -->
+  <section *ngIf="activeTab === 'accessories'" class="table-container mb-4" aria-label="Accessories Catalog">
+    <div class="table-toolbar">
+      <div class="d-flex align-items-center gap-2 flex-grow-1 flex-wrap">
+        <div class="search-input-group" style="inline-size: 280px;">
+          <i class="bi bi-search search-icon" aria-hidden="true"></i>
+          <input
+            type="search"
+            class="app-input"
+            placeholder="Search accessory name, SKU, barcode..."
+            [formControl]="accessorySearch"
+          />
+        </div>
+
+        <select class="app-input" style="inline-size: 200px;" [(ngModel)]="selectedCategory" (ngModelChange)="applyAccessoryFilters()">
+          <option value="All">All Categories</option>
+          <option value="Chargers & Adapters">Chargers &amp; Adapters</option>
+          <option value="Cases & Protection">Cases &amp; Protection</option>
+          <option value="Screen Protectors">Screen Protectors</option>
+          <option value="Audio & Wearables">Audio &amp; Wearables</option>
+          <option value="Power Banks">Power Banks</option>
+        </select>
+
+        <div class="form-check ms-2">
+          <input
+            id="onlyLowStockCheck"
+            type="checkbox"
+            class="form-check-input"
+            [(ngModel)]="onlyLowStock"
+            (ngModelChange)="applyAccessoryFilters()"
+          />
+          <label for="onlyLowStockCheck" class="form-check-label small text-secondary">
+            Low Stock Only (&le; Min Threshold)
+          </label>
+        </div>
+      </div>
+
+      <span class="badge bg-light text-secondary border small">
+        Showing {{ filteredAccessories.length }} products
+      </span>
+    </div>
+
+    <div class="data-table-wrapper">
+      <table class="app-table">
+        <thead>
+          <tr>
+            <th scope="col" style="inline-size: 30%;">Product Item &amp; Brand</th>
+            <th scope="col" style="inline-size: 15%;">SKU Code</th>
+            <th scope="col" style="inline-size: 15%;">Category</th>
+            <th scope="col" class="col-numeric" style="inline-size: 10%;">Cost</th>
+            <th scope="col" class="col-numeric" style="inline-size: 10%;">Retail</th>
+            <th scope="col" class="text-center" style="inline-size: 10%;">Stock Qty</th>
+            <th scope="col" style="inline-size: 10%;">Stock Status</th>
+            <th scope="col" class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let acc of filteredAccessories">
+            <td>
+              <div class="fw-bold text-dark lh-sm">{{ acc.name }}</div>
+              <small class="text-muted font-monospace">UPC/EAN: {{ acc.barcode }}</small>
+            </td>
+            <td class="col-mono text-dark fw-semibold">{{ acc.sku }}</td>
+            <td>
+              <span class="badge bg-light text-secondary border small">{{ acc.category }}</span>
+            </td>
+            <td class="col-numeric col-mono text-secondary">${{ acc.purchasePrice | number:'1.2-2' }}</td>
+            <td class="col-numeric col-mono fw-bold text-dark">${{ acc.sellingPrice | number:'1.2-2' }}</td>
+            <td class="text-center">
+              <div class="d-inline-flex align-items-center gap-1">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary py-0 px-1"
+                  (click)="adjustAccessoryStock(acc, -1)"
+                  title="Decrement stock"
+                >
+                  -
+                </button>
+                <span class="font-monospace fw-bold px-1" [ngClass]="acc.quantity <= acc.minThreshold ? 'text-danger' : 'text-dark'">
+                  {{ acc.quantity }}
+                </span>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary py-0 px-1"
+                  (click)="adjustAccessoryStock(acc, 1)"
+                  title="Increment stock"
+                >
+                  +
+                </button>
+              </div>
+            </td>
+            <td>
+              <app-status-badge
+                [label]="acc.quantity <= acc.minThreshold ? 'Low Stock' : 'In Stock'"
+                [tone]="acc.quantity <= acc.minThreshold ? 'warning' : 'success'"
+              ></app-status-badge>
+            </td>
+            <td class="text-end">
+              <button
+                type="button"
+                class="btn-app btn-app-subtle btn-app-sm text-danger"
+                (click)="confirmDeleteAccessory(acc)"
+                title="Delete product"
+              >
+                <i class="bi bi-trash" aria-hidden="true"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       TAB 3: REORDER WATCHLIST
+       ========================================================================= -->
+  <section *ngIf="activeTab === 'reorder'" class="app-card mb-4" aria-label="Reorder Watchlist">
+    <div class="app-card-header">
+      <h2 class="app-card-title text-warning">
+        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+        <span>Stock Replenishment &amp; Purchase Recommendations</span>
+      </h2>
+      <span class="badge bg-warning-subtle text-warning border border-warning-subtle font-monospace">4 items below threshold</span>
+    </div>
+
+    <div class="app-card-body p-4">
+      <p class="text-secondary small mb-4">
+        The following hardware and accessory products have fallen below safe shop inventory minimums. Automated purchase orders can be dispatched to your assigned wholesale distributor.
+      </p>
+
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <div class="p-3 rounded border bg-light h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="badge bg-danger-subtle text-danger border">Critical Shortage</span>
+                <span class="font-monospace text-muted small">BAS-PB-20K-65W</span>
+              </div>
+              <h3 class="h6 fw-bold text-dark mb-1">Baseus 20,000mAh 65W Power Bank</h3>
+              <div class="small text-secondary mb-3">
+                Current Stock: <strong class="text-danger font-monospace">4 Units</strong> &middot; Minimum Safe Threshold: <strong>8 Units</strong>
+              </div>
+            </div>
+            <div class="d-flex align-items-center justify-content-between pt-2 border-top">
+              <span class="small text-muted">Wholesale Supplier: Apex Global Distribution</span>
+              <button type="button" class="btn-app btn-app-primary btn-app-sm" (click)="issuePO('Apex Global Distribution', 15, 'PO-984')">
+                <i class="bi bi-cart-plus"></i> Order 15 Units
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-6">
+          <div class="p-3 rounded border bg-light h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="badge bg-warning-subtle text-warning border">Replenish Soon</span>
+                <span class="font-monospace text-muted small">SAM-PWR-45W</span>
+              </div>
+              <h3 class="h6 fw-bold text-dark mb-1">Samsung 45W Type-C Super Fast Wall Charger</h3>
+              <div class="small text-secondary mb-3">
+                Current Stock: <strong class="text-warning font-monospace">5 Units</strong> &middot; Minimum Safe Threshold: <strong>12 Units</strong>
+              </div>
+            </div>
+            <div class="d-flex align-items-center justify-content-between pt-2 border-top">
+              <span class="small text-muted">Supplier: Samsung Direct Logistics</span>
+              <button type="button" class="btn-app btn-app-primary btn-app-sm" (click)="issuePO('Samsung Direct Logistics', 25, 'PO-985')">
+                <i class="bi bi-cart-plus"></i> Order 25 Units
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- LINEAR-STYLE SLIDE-OVER DEVICE INSPECTION DRAWER -->
+<app-device-detail-drawer
+  [isOpen]="drawerOpen"
+  [device]="selectedPhoneForDrawer"
+  (closeDrawer)="closePhoneDrawer()"
+></app-device-detail-drawer>
+
+<!-- MODAL: ADD MOBILE PHONE (IMEI SERIALIZED) -->
+<div *ngIf="showAddPhoneModal" class="drawer-backdrop" (click)="showAddPhoneModal = false" aria-hidden="true"></div>
+<div *ngIf="showAddPhoneModal" class="modal-dialog-custom shadow-lg" style="inline-size: 580px;" role="dialog" aria-modal="true" aria-label="Register Serialized Phone">
+  <div class="modal-content bg-white p-4 rounded-3 border">
+    <div class="d-flex align-items-center justify-content-between pb-3 border-bottom mb-3">
+      <div>
+        <h2 class="h5 fw-bold mb-0 text-dark">Register Mobile Phone</h2>
+        <small class="text-muted">Unique IMEI registration for hardware tracking &amp; warranty</small>
+      </div>
+      <button type="button" class="btn-close" (click)="showAddPhoneModal = false"></button>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-6">
+        <label for="pBrand" class="app-form-label">Brand <span class="required-star">*</span></label>
+        <select id="pBrand" class="app-input" [(ngModel)]="newPhone.brand">
+          <option value="Apple">Apple</option>
+          <option value="Samsung">Samsung</option>
+          <option value="Google">Google</option>
+          <option value="Xiaomi">Xiaomi</option>
+          <option value="OnePlus">OnePlus</option>
+        </select>
+      </div>
+
+      <div class="col-6">
+        <label for="pModel" class="app-form-label">Model <span class="required-star">*</span></label>
+        <input id="pModel" type="text" class="app-input" placeholder="e.g. iPhone 15 Pro Max" [(ngModel)]="newPhone.model" />
+      </div>
+
+      <div class="col-12">
+        <label for="pImei1" class="app-form-label">Primary IMEI 1 (15 Digits) <span class="required-star">*</span></label>
+        <div class="input-group">
+          <span class="input-group-text bg-light font-monospace small"><i class="bi bi-upc"></i></span>
+          <input id="pImei1" type="text" maxlength="15" class="app-input font-monospace fw-semibold" placeholder="354892019482711" [(ngModel)]="newPhone.imei1" />
+        </div>
+      </div>
+
+      <div class="col-12">
+        <label for="pImei2" class="app-form-label">Secondary IMEI 2 (eSIM / Dual SIM optional)</label>
+        <input id="pImei2" type="text" maxlength="15" class="app-input font-monospace" placeholder="354892019482712" [(ngModel)]="newPhone.imei2" />
+      </div>
+
+      <div class="col-4">
+        <label for="pStorage" class="app-form-label">Storage</label>
+        <select id="pStorage" class="app-input" [(ngModel)]="newPhone.storage">
+          <option value="128GB">128GB</option>
+          <option value="256GB">256GB</option>
+          <option value="512GB">512GB</option>
+          <option value="1TB">1TB</option>
+        </select>
+      </div>
+
+      <div class="col-4">
+        <label for="pRam" class="app-form-label">RAM</label>
+        <input id="pRam" type="text" class="app-input" placeholder="8GB" [(ngModel)]="newPhone.ram" />
+      </div>
+
+      <div class="col-4">
+        <label for="pColor" class="app-form-label">Color</label>
+        <input id="pColor" type="text" class="app-input" placeholder="Natural Titanium" [(ngModel)]="newPhone.color" />
+      </div>
+
+      <div class="col-6">
+        <label for="pCondition" class="app-form-label">Condition Grade</label>
+        <select id="pCondition" class="app-input" [(ngModel)]="newPhone.condition">
+          <option value="Brand New">Brand New (Sealed)</option>
+          <option value="Pre-Owned Grade A">Pre-Owned Grade A (Pristine)</option>
+          <option value="Pre-Owned Grade B">Pre-Owned Grade B (Minor Wear)</option>
+          <option value="Refurbished">Refurbished</option>
+        </select>
+      </div>
+
+      <div class="col-6">
+        <label for="pBattery" class="app-form-label">Battery Health (%)</label>
+        <input id="pBattery" type="number" min="50" max="100" class="app-input" [(ngModel)]="newPhone.batteryHealth" />
+      </div>
+
+      <div class="col-6">
+        <label for="pCost" class="app-form-label">Wholesale Cost ($)</label>
+        <input id="pCost" type="number" class="app-input font-monospace" [(ngModel)]="newPhone.purchasePrice" />
+      </div>
+
+      <div class="col-6">
+        <label for="pPrice" class="app-form-label">Retail Selling Price ($)</label>
+        <input id="pPrice" type="number" class="app-input font-monospace fw-bold text-primary" [(ngModel)]="newPhone.sellingPrice" />
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+      <button type="button" class="btn-app btn-app-secondary" (click)="showAddPhoneModal = false">Cancel</button>
+      <button type="button" class="btn-app btn-app-primary" (click)="savePhone()" [disabled]="!newPhone.model || !newPhone.imei1">
+        Save Device into Stock
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ADD ACCESSORY -->
+<div *ngIf="showAddAccessoryModal" class="drawer-backdrop" (click)="showAddAccessoryModal = false" aria-hidden="true"></div>
+<div *ngIf="showAddAccessoryModal" class="modal-dialog-custom shadow-lg" role="dialog" aria-modal="true" aria-label="Add Accessory">
+  <div class="modal-content bg-white p-4 rounded-3 border">
+    <div class="d-flex align-items-center justify-content-between pb-2 border-bottom mb-3">
+      <h2 class="h5 fw-bold mb-0 text-dark">Add Accessory Stock</h2>
+      <button type="button" class="btn-close" (click)="showAddAccessoryModal = false"></button>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-12">
+        <label for="accName" class="app-form-label">Accessory Name <span class="required-star">*</span></label>
+        <input id="accName" type="text" class="app-input" placeholder="e.g. MagSafe Wireless Car Charger" [(ngModel)]="newAccessory.name" />
+      </div>
+
+      <div class="col-6">
+        <label for="accSku" class="app-form-label">SKU Code <span class="required-star">*</span></label>
+        <input id="accSku" type="text" class="app-input font-monospace" placeholder="MAG-CAR-15W" [(ngModel)]="newAccessory.sku" />
+      </div>
+
+      <div class="col-6">
+        <label for="accCat" class="app-form-label">Category</label>
+        <select id="accCat" class="app-input" [(ngModel)]="newAccessory.category">
+          <option value="Chargers & Adapters">Chargers &amp; Adapters</option>
+          <option value="Cases & Protection">Cases &amp; Protection</option>
+          <option value="Screen Protectors">Screen Protectors</option>
+          <option value="Audio & Wearables">Audio &amp; Wearables</option>
+          <option value="Power Banks">Power Banks</option>
+        </select>
+      </div>
+
+      <div class="col-6">
+        <label for="accCost" class="app-form-label">Cost Basis ($)</label>
+        <input id="accCost" type="number" class="app-input font-monospace" [(ngModel)]="newAccessory.purchasePrice" />
+      </div>
+
+      <div class="col-6">
+        <label for="accRetail" class="app-form-label">Retail Selling Price ($)</label>
+        <input id="accRetail" type="number" class="app-input font-monospace fw-bold text-primary" [(ngModel)]="newAccessory.sellingPrice" />
+      </div>
+
+      <div class="col-6">
+        <label for="accQty" class="app-form-label">Initial Quantity</label>
+        <input id="accQty" type="number" class="app-input font-monospace" [(ngModel)]="newAccessory.quantity" />
+      </div>
+
+      <div class="col-6">
+        <label for="accMin" class="app-form-label">Min Threshold (Alert Level)</label>
+        <input id="accMin" type="number" class="app-input font-monospace" [(ngModel)]="newAccessory.minThreshold" />
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+      <button type="button" class="btn-app btn-app-secondary" (click)="showAddAccessoryModal = false">Cancel</button>
+      <button type="button" class="btn-app btn-app-primary" (click)="saveAccessory()" [disabled]="!newAccessory.name || !newAccessory.sku">
+        Save Accessory
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- REUSABLE CONFIRM DELETE DIALOG -->
+<app-confirm-dialog
+  [isOpen]="showDeleteConfirm"
+  title="Confirm Removal"
+  [message]="'Are you sure you want to delete ' + (deleteTarget?.name || 'this item') + ' from store inventory? This action is tracked in audit logs.'"
+  confirmText="Delete Permanently"
+  [isDestructive]="true"
+  (confirm)="executeDelete()"
+  (cancel)="cancelDelete()"
+></app-confirm-dialog>

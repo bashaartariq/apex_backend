@@ -1,43 +1,87 @@
 .app-sidebar {
   inline-size: var(--ms-sidebar-width);
-  background-color: var(--ms-bg-sidebar);
-  color: var(--ms-text-sidebar);
+  background-color: var(--ms-sidebar-bg);
+  border-inline-end: 1px solid var(--ms-sidebar-border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  transition: transform 0.25s ease-in-out;
   min-block-size: 100vh;
   min-block-size: 100dvh;
+  transition: inline-size 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s ease-in-out;
+  overflow-y: auto;
+  overflow-x: hidden;
+  user-select: none;
+
+  &.is-collapsed {
+    inline-size: var(--ms-sidebar-collapsed-width);
+
+    .brand-name {
+      display: none;
+    }
+  }
+}
+
+.brand-logo-box {
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+}
+
+.brand-name {
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+}
+
+.nav-section-title {
+  color: var(--ms-sidebar-text-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .nav-link {
-  color: var(--ms-text-sidebar);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  color: var(--ms-sidebar-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem;
+  transition: all 0.12s ease-in-out;
+  min-block-size: 36px;
+
+  .nav-icon {
+    font-size: 1rem;
+    color: var(--ms-sidebar-text-muted);
+    transition: color 0.12s ease;
+  }
 
   &:hover {
-    background-color: var(--ms-bg-sidebar-hover);
-    color: #ffffff;
+    background-color: var(--ms-sidebar-item-hover);
+    color: var(--ms-sidebar-text-hover);
+
+    .nav-icon {
+      color: #ffffff;
+    }
   }
 
   &.active {
-    background-color: var(--ms-brand-primary);
+    background-color: var(--ms-sidebar-active-bg);
     color: #ffffff;
     font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--ms-brand-primary);
+
+    .nav-icon {
+      color: var(--ms-brand-primary);
+    }
   }
 }
 
-.placeholder-item {
-  opacity: 0.55;
-  cursor: not-allowed;
-  user-select: none;
-
-  &:hover {
-    background-color: transparent !important;
-    color: var(--ms-text-sidebar-muted) !important;
-  }
+.status-dot-sm {
+  inline-size: 0.45rem;
+  block-size: 0.45rem;
 }
 
-/* Responsive mobile drawer behavior */
+/* Mobile drawer behavior */
 @media (max-width: 767.98px) {
   .app-sidebar {
     position: fixed;
@@ -47,7 +91,7 @@
     block-size: 100dvh;
     z-index: 1050;
     transform: translateX(-100%);
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.45);
 
     &.is-open {
       transform: translateX(0);

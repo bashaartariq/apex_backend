@@ -1,29 +1,40 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { ReactiveFormsModule } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { HeaderComponent } from './components/header/header.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { StatusBadgeComponent } from './components/status-badge/status-badge.component';
+import { ToastContainerComponent } from './components/toast/toast-container.component';
+import { ConfirmDialogComponent } from './components/confirm-dialog/confirm-dialog.component';
+import { DeviceDetailDrawerComponent } from './components/device-detail-drawer/device-detail-drawer.component';
 
 @NgModule({
   declarations: [
     HeaderComponent,
     SidebarComponent,
     StatusBadgeComponent,
+    ToastContainerComponent,
+    ConfirmDialogComponent,
+    DeviceDetailDrawerComponent,
   ],
   imports: [
     CommonModule,
     RouterModule,
     ReactiveFormsModule,
+    FormsModule,
   ],
   exports: [
     CommonModule,
     RouterModule,
     ReactiveFormsModule,
+    FormsModule,
     HeaderComponent,
     SidebarComponent,
     StatusBadgeComponent,
+    ToastContainerComponent,
+    ConfirmDialogComponent,
+    DeviceDetailDrawerComponent,
   ],
 })
 export class SharedModule {}

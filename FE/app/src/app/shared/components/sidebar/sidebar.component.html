@@ -2,73 +2,87 @@
   id="app-sidebar"
   class="app-sidebar"
   [class.is-open]="isOpen"
+  [class.is-collapsed]="isCollapsed"
   aria-label="Application navigation"
 >
-  <div class="sidebar-header d-flex align-items-center justify-content-between p-3 border-bottom border-secondary">
-    <div class="d-flex align-items-center gap-2">
-      <i class="bi bi-cpu text-primary fs-4" aria-hidden="true"></i>
-      <div>
-        <div class="fw-bold text-light">Mobile POS Suite</div>
-        <small class="text-secondary">Multi-Tenant Core</small>
+  <!-- Sidebar Header / Brand Logo -->
+  <div class="sidebar-header d-flex align-items-center justify-content-between p-3 border-bottom border-dark">
+    <a routerLink="/dashboard" class="d-flex align-items-center gap-2 text-decoration-none" (click)="onNavigate()">
+      <div class="brand-logo-box rounded d-flex align-items-center justify-content-center text-white bg-primary flex-shrink-0">
+        <i class="bi bi-phone-fill fs-5" aria-hidden="true"></i>
       </div>
-    </div>
+      <div class="brand-text-block" *ngIf="!isCollapsed">
+        <div class="fw-bold text-white lh-1 brand-name">ApexCellular</div>
+        <small class="text-muted text-uppercase" style="font-size: 0.65rem; letter-spacing: 0.05em;">POS &amp; Inventory Suite</small>
+      </div>
+    </a>
+
+    <!-- Mobile close drawer button -->
     <button
       type="button"
-      class="btn btn-sm btn-outline-secondary d-md-none text-light border-0"
+      class="btn btn-sm text-secondary d-md-none border-0 p-1"
       (click)="closeSidebar.emit()"
       aria-label="Close navigation menu"
     >
-      <i class="bi bi-x-lg" aria-hidden="true"></i>
+      <i class="bi bi-x-lg fs-5" aria-hidden="true"></i>
     </button>
   </div>
 
-  <nav aria-label="Primary" class="p-3">
-    <div class="text-uppercase text-muted fw-bold small mb-2 px-2" style="font-size: 0.75rem; letter-spacing: 0.05em;">
-      Modules & Navigation
-    </div>
-    <ul class="nav flex-column gap-1 list-unstyled mb-0">
-      <li *ngFor="let item of navItems" class="nav-item">
-        <a
-          *ngIf="!item.isPlaceholder; else placeholderLink"
-          [routerLink]="item.route"
-          routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: true }"
-          (click)="onNavigate()"
-          class="nav-link d-flex align-items-center justify-content-between rounded px-3 py-2 text-decoration-none"
-        >
-          <span class="d-flex align-items-center gap-2">
-            <i class="bi" [ngClass]="item.icon" aria-hidden="true"></i>
-            <span>{{ item.label }}</span>
-          </span>
-          <span class="badge bg-success text-white small" *ngIf="item.stageBadge">
-            {{ item.stageBadge }}
-          </span>
-        </a>
+  <!-- Navigation Items -->
+  <nav aria-label="Primary" class="sidebar-nav flex-grow-1 p-2" tabindex="-1">
+    <div *ngFor="let section of navSections" class="nav-section mb-3">
+      <div *ngIf="section.title && !isCollapsed" class="nav-section-title px-2 mb-1">
+        {{ section.title }}
+      </div>
 
-        <ng-template #placeholderLink>
-          <div
-            class="nav-link placeholder-item d-flex align-items-center justify-content-between rounded px-3 py-2 text-decoration-none text-muted"
-            aria-disabled="true"
-            title="Scheduled for implementation in later steps"
+      <ul class="nav flex-column gap-1 list-unstyled mb-0">
+        <li *ngFor="let item of section.items" class="nav-item">
+          <a
+            [routerLink]="item.route"
+            routerLinkActive="active"
+            (click)="onNavigate()"
+            class="nav-link d-flex align-items-center rounded text-decoration-none"
+            [class.justify-content-center]="isCollapsed"
+            [class.px-2]="isCollapsed"
+            [class.px-3]="!isCollapsed"
+            [title]="isCollapsed ? item.label : ''"
           >
-            <span class="d-flex align-items-center gap-2">
-              <i class="bi" [ngClass]="item.icon" aria-hidden="true"></i>
-              <span>{{ item.label }}</span>
+            <i class="bi nav-icon flex-shrink-0" [ngClass]="item.icon" aria-hidden="true"></i>
+            <span class="nav-label flex-grow-1 ms-2 text-truncate" *ngIf="!isCollapsed">
+              {{ item.label }}
             </span>
-            <span class="badge bg-secondary text-light small" *ngIf="item.stageBadge">
-              {{ item.stageBadge }}
+            <span
+              *ngIf="item.badge && !isCollapsed"
+              class="badge rounded-pill small ms-1"
+              [ngClass]="item.badgeColor || 'bg-secondary'"
+              style="font-size: 0.6875rem;"
+            >
+              {{ item.badge }}
             </span>
-          </div>
-        </ng-template>
-      </li>
-    </ul>
+          </a>
+        </li>
+      </ul>
+    </div>
   </nav>
 
-  <div class="sidebar-footer mt-auto p-3 border-top border-secondary text-secondary small">
+  <!-- Sidebar Footer / Store Identity info -->
+  <div class="sidebar-footer p-3 border-top border-dark text-secondary mt-auto" *ngIf="!isCollapsed">
     <div class="d-flex align-items-center gap-2 mb-1">
-      <i class="bi bi-database text-info" aria-hidden="true"></i>
-      <span class="text-light fw-semibold">SQLite Shared DB</span>
+      <i class="bi bi-shop text-primary fs-5" aria-hidden="true"></i>
+      <div class="overflow-hidden">
+        <div class="text-light small fw-bold text-truncate">Downtown Store #1</div>
+        <div class="small text-muted font-monospace" style="font-size: 0.6875rem;">{{ activeShopId || 'SHOP-DOWNTOWN-01' }}</div>
+      </div>
     </div>
-    <div class="small">Tenant isolation via <code class="text-info font-monospace">shop_id</code></div>
+    <div class="d-flex align-items-center justify-content-between pt-2 border-top border-dark mt-2" style="font-size: 0.7rem;">
+      <span class="text-muted">v1.2.0 &middot; SaaS Enterprise</span>
+      <span class="text-success d-flex align-items-center gap-1">
+        <span class="status-dot-sm bg-success rounded-circle"></span> Online
+      </span>
+    </div>
+  </div>
+
+  <div class="sidebar-footer-collapsed p-2 text-center border-top border-dark mt-auto" *ngIf="isCollapsed">
+    <span class="status-dot-sm bg-success rounded-circle d-inline-block" title="System Online"></span>
   </div>
 </aside>

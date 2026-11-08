@@ -1,0 +1,111 @@
+/* ==========================================================================
+   DESIGN TOKENS — APEXCELLULAR SAAS DESIGN SYSTEM
+   ========================================================================== */
+
+:root {
+  /* Typography */
+  --ms-font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ms-font-mono: 'JetBrains Mono', 'SF Mono', Consolas, Menlo, monospace;
+
+  --ms-text-xs: 0.75rem;    /* 12px */
+  --ms-text-sm: 0.8125rem;  /* 13px */
+  --ms-text-base: 0.875rem; /* 14px */
+  --ms-text-md: 0.9375rem;  /* 15px */
+  --ms-text-lg: 1rem;       /* 16px */
+  --ms-text-xl: 1.125rem;   /* 18px */
+  --ms-text-2xl: 1.25rem;   /* 20px */
+  --ms-text-3xl: 1.5rem;    /* 24px */
+  --ms-text-4xl: 1.875rem;  /* 30px */
+
+  /* Neutral Backgrounds */
+  --ms-bg-app: #f8fafc;
+  --ms-bg-surface: #ffffff;
+  --ms-bg-subtle: #f1f5f9;
+  --ms-bg-hover: #f8fafc;
+  --ms-bg-active: #e2e8f0;
+
+  /* Sidebar Dark Theme Tokens */
+  --ms-sidebar-bg: #0b0f19;
+  --ms-sidebar-surface: #111827;
+  --ms-sidebar-border: #1f2937;
+  --ms-sidebar-text: #94a3b8;
+  --ms-sidebar-text-muted: #64748b;
+  --ms-sidebar-text-hover: #f8fafc;
+  --ms-sidebar-item-hover: rgba(255, 255, 255, 0.05);
+  --ms-sidebar-item-active: #2563eb;
+  --ms-sidebar-active-bg: rgba(37, 99, 235, 0.12);
+
+  /* Text Colors */
+  --ms-text-primary: #0f172a;
+  --ms-text-secondary: #475569;
+  --ms-text-muted: #64748b;
+  --ms-text-disabled: #94a3b8;
+  --ms-text-inverse: #ffffff;
+
+  /* Borders & Dividers */
+  --ms-border-subtle: #e2e8f0;
+  --ms-border-strong: #cbd5e1;
+  --ms-border-focus: #2563eb;
+
+  /* Primary Brand (SaaS Blue) */
+  --ms-brand-primary: #2563eb;
+  --ms-brand-hover: #1d4ed8;
+  --ms-brand-active: #1e40af;
+  --ms-brand-subtle: #eff6ff;
+  --ms-brand-border: #bfdbfe;
+  --ms-brand-text: #1d4ed8;
+
+  /* Semantic State Tokens */
+  /* Success / Positive */
+  --ms-success: #10b981;
+  --ms-success-subtle: #ecfdf5;
+  --ms-success-border: #a7f3d0;
+  --ms-success-text: #065f46;
+
+  /* Warning / Caution */
+  --ms-warning: #f59e0b;
+  --ms-warning-subtle: #fffbeb;
+  --ms-warning-border: #fde68a;
+  --ms-warning-text: #92400e;
+
+  /* Danger / Destructive */
+  --ms-danger: #ef4444;
+  --ms-danger-subtle: #fef2f2;
+  --ms-danger-border: #fecaca;
+  --ms-danger-text: #991b1b;
+
+  /* Info */
+  --ms-info: #0284c7;
+  --ms-info-subtle: #f0f9ff;
+  --ms-info-border: #bae6fd;
+  --ms-info-text: #075985;
+
+  /* Purple / Tech / IMEI */
+  --ms-purple: #7c3aed;
+  --ms-purple-subtle: #f5f3ff;
+  --ms-purple-border: #ddd6fe;
+  --ms-purple-text: #5b21b6;
+
+  /* Layout Dimensions */
+  --ms-sidebar-width: 256px;
+  --ms-sidebar-collapsed-width: 68px;
+  --ms-header-height: 60px;
+
+  /* Border Radii */
+  --ms-radius-xs: 4px;
+  --ms-radius-sm: 6px;
+  --ms-radius-md: 8px;
+  --ms-radius-lg: 10px;
+  --ms-radius-xl: 12px;
+  --ms-radius-full: 9999px;
+
+  /* Elevation Shadows */
+  --ms-shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --ms-shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --ms-shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --ms-shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
+  --ms-shadow-drawer: -4px 0 24px rgba(15, 23, 42, 0.12);
+
+  /* Focus Indicator Ring */
+  --ms-focus-ring: #2563eb;
+}
