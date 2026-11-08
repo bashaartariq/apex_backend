@@ -1,6 +1,8 @@
 import express, { Application } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import path from 'path';
+import fs from 'fs';
 import { env } from './config/env';
 import { attachTenantContext } from './middleware/tenantContext';
 import { apiRouter } from './routes';
@@ -33,6 +35,18 @@ export function createApp(): Application {
 
   // REST API routes
   app.use('/api', apiRouter);
+
+  // Serve production Angular frontend if built
+  const frontendDist = path.resolve(__dirname, '../../FE/app/dist/app');
+  if (fs.existsSync(frontendDist)) {
+    app.use(express.static(frontendDist));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api')) {
+        return next();
+      }
+      res.sendFile(path.join(frontendDist, 'index.html'));
+    });
+  }
 
   // 404 & centralized error handlers
   app.use(notFoundHandler);

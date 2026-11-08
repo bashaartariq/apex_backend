@@ -7,13 +7,28 @@ import { CustomersComponent } from './features/customers/customers.component';
 import { ReportsComponent } from './features/reports/reports.component';
 import { OperationsComponent } from './features/operations/operations.component';
 import { FoundationComponent } from './features/foundation/foundation.component';
+import { LoginComponent } from './features/auth/login/login.component';
+import { RegisterComponent } from './features/auth/register/register.component';
 import { AuthGuard } from './core/guards/auth.guard';
+import { GuestGuard } from './core/guards/guest.guard';
 
 const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
     redirectTo: 'dashboard',
+  },
+  {
+    path: 'login',
+    component: LoginComponent,
+    canActivate: [GuestGuard],
+    title: 'Sign In — ApexCellular',
+  },
+  {
+    path: 'register',
+    component: RegisterComponent,
+    canActivate: [GuestGuard],
+    title: 'Shop Registration — ApexCellular',
   },
   {
     path: 'dashboard',
