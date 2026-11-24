@@ -1,23 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="light">
 <head>
   <meta charset="utf-8">
-  <title>ApexCellular POS & Inventory Suite</title>
+  <title>ApexCellular Enterprise — Retail OS &amp; IMEI POS Suite</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
 </head>
 <body class="theme-light">
   <app-root>
-    <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: Inter, -apple-system, sans-serif; background: #f8fafc; color: #1e293b;">
-      <div style="width: 44px; height: 44px; border: 3px solid #e2e8f0; border-top-color: #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-      <div style="margin-top: 16px; font-size: 15px; font-weight: 600; letter-spacing: -0.01em;">ApexCellular POS</div>
-      <div style="margin-top: 4px; font-size: 12px; color: #64748b;">Initializing workspace...</div>
+    <div style="min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', Inter, -apple-system, sans-serif; background: radial-gradient(circle at top, #111b36 0%, #090d16 70%); color: #f8fafc;">
+      <div style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(135deg, #4f46e5, #2563eb); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 32px rgba(79, 70, 229, 0.35); margin-bottom: 18px;">
+        <div style="width: 24px; height: 24px; border: 2.5px solid rgba(255,255,255,0.28); border-top-color: #ffffff; border-radius: 50%; animation: ms-spin 0.75s linear infinite;"></div>
+      </div>
+      <div style="font-size: 16px; font-weight: 700; letter-spacing: -0.02em;">ApexCellular Retail OS</div>
+      <div style="margin-top: 6px; font-size: 12px; color: #94a3b8; font-family: Inter, sans-serif;">Initializing multi-tenant workspace...</div>
       <style>
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes ms-spin { to { transform: rotate(360deg); } }
       </style>
     </div>
   </app-root>

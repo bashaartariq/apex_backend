@@ -1,501 +1,795 @@
 <div class="dashboard-page container-fluid px-3 px-lg-4 py-4">
-  <!-- Top Welcome & Actions Header -->
-  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+  <!-- Executive Page Hero -->
+  <div class="page-hero">
     <div>
-      <div class="d-flex align-items-center gap-2 mb-1">
-        <span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold px-2 py-1">
-          <i class="bi bi-shield-check me-1"></i> Tenant Active &middot; {{ auth.currentShop?.name || 'ApexCellular' }}
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+        <span class="page-eyebrow mb-0">
+          <i class="bi bi-shield-check"></i> {{ auth.currentShop?.name || 'Active Store' }}
         </span>
-        <span class="text-muted small">
-          Signed in: <strong>{{ auth.currentUser?.name || 'User' }}</strong> ({{ auth.currentUser?.role === 'SHOP_ADMIN' ? 'Administrator' : 'Shopkeeper' }})
+        <span class="badge" [ngClass]="isAdmin ? 'bg-primary-subtle text-primary border' : 'bg-info-subtle text-info border'">
+          {{ isAdmin ? 'Executive Admin' : 'POS Cashier' }}
+        </span>
+        <span class="text-muted small d-none d-md-inline">
+          &middot; Updated {{ lastRefreshed | date: 'shortTime' }}
         </span>
       </div>
-      <h1 class="h3 fw-bold text-dark mb-0">Overview Dashboard</h1>
+      <h1 class="page-title">
+        {{ greetingLabel }}, {{ auth.currentUser?.name?.split(' ')?.[0] || 'Team' }}
+      </h1>
+      <p class="page-subtitle">
+        {{ isAdmin ? 'Real-time store revenue, gross margin telemetry, FIFO stock valuation & operational approvals.' : 'Live register activity, personal sales progress, and in-stock hardware availability.' }}
+      </p>
     </div>
 
-    <div class="d-flex align-items-center gap-2">
-      <!-- Period Selector -->
-      <div class="btn-group btn-group-sm bg-white p-1 rounded border shadow-xs" role="group" aria-label="Date Range Filter">
-        <button
-          type="button"
-          class="btn btn-sm"
-          [ngClass]="selectedPeriod === 'today' ? 'btn-primary' : 'btn-light text-secondary'"
-          (click)="setPeriod('today')"
-        >
-          Today
-        </button>
-        <button
-          type="button"
-          class="btn btn-sm"
-          [ngClass]="selectedPeriod === 'week' ? 'btn-primary' : 'btn-light text-secondary'"
-          (click)="setPeriod('week')"
-        >
-          This Week
-        </button>
-        <button
-          type="button"
-          class="btn btn-sm"
-          [ngClass]="selectedPeriod === 'month' ? 'btn-primary' : 'btn-light text-secondary'"
-          (click)="setPeriod('month')"
-        >
-          Month to Date
-        </button>
-      </div>
+    <div class="d-flex align-items-center flex-wrap gap-2">
+      <button type="button" class="btn-app btn-app-secondary btn-app-sm" (click)="loadDashboardData()" title="Refresh Dashboard Metrics">
+        <i class="bi bi-arrow-clockwise"></i>
+        <span>Refresh</span>
+      </button>
 
-      <!-- Quick Action -->
-      <button type="button" class="btn-app btn-app-primary shadow-xs" (click)="goToPos()">
-        <i class="bi bi-cart-plus-fill" aria-hidden="true"></i>
-        <span>Open POS Terminal</span>
+      <button *ngIf="isAdmin" type="button" class="btn-app btn-app-secondary btn-app-sm" (click)="goToReports()">
+        <i class="bi bi-bar-chart-line"></i>
+        <span>Reports Suite</span>
+      </button>
+
+      <button type="button" class="btn-app btn-app-primary" (click)="goToPos()">
+        <i class="bi bi-upc-scan" aria-hidden="true"></i>
+        <span>Open POS Register</span>
       </button>
     </div>
   </div>
 
-  <!-- 6 Key Performance Metric Cards -->
-  <div class="row g-3 mb-4">
-    <!-- Card 1: Gross Sales -->
-    <div class="col-12 col-sm-6 col-xl-2">
-      <div class="metric-card h-100">
-        <div class="metric-header">
-          <span class="metric-label">Sales Today</span>
-          <div class="metric-icon-box bg-primary-subtle text-primary">
-            <i class="bi bi-currency-dollar" aria-hidden="true"></i>
-          </div>
-        </div>
-        <div class="metric-value">$14,820.50</div>
-        <div class="metric-footer">
-          <span class="badge bg-success-subtle text-success fw-bold font-monospace" style="font-size: 0.7rem;">+14.2%</span>
-          <span>vs yesterday</span>
+  <!-- Skeleton Shimmer Loading State -->
+  <div *ngIf="isLoading" class="mb-4">
+    <div class="row g-3 mb-4">
+      <div *ngFor="let i of [1,2,3,4]" class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card">
+          <div class="skeleton-block" style="block-size: 14px; inline-size: 48%;"></div>
+          <div class="skeleton-block mt-2" style="block-size: 30px; inline-size: 72%;"></div>
+          <div class="skeleton-block mt-2" style="block-size: 12px; inline-size: 60%;"></div>
         </div>
       </div>
     </div>
-
-    <!-- Card 2: Gross Profit -->
-    <div class="col-12 col-sm-6 col-xl-2">
-      <div class="metric-card h-100">
-        <div class="metric-header">
-          <span class="metric-label">Gross Margin</span>
-          <div class="metric-icon-box bg-success-subtle text-success">
-            <i class="bi bi-graph-up-arrow" aria-hidden="true"></i>
-          </div>
-        </div>
-        <div class="metric-value">31.8%</div>
-        <div class="metric-footer">
-          <span class="text-success fw-semibold font-monospace">$4,710.00</span>
-          <span>net profit</span>
+    <div class="row g-4">
+      <div class="col-12 col-lg-8">
+        <div class="app-card p-4">
+          <div class="skeleton-block mb-3" style="block-size: 20px; inline-size: 42%;"></div>
+          <div class="skeleton-block" style="block-size: 220px; inline-size: 100%;"></div>
         </div>
       </div>
-    </div>
-
-    <!-- Card 3: Phones In Stock -->
-    <div class="col-12 col-sm-6 col-xl-2">
-      <div class="metric-card h-100">
-        <div class="metric-header">
-          <span class="metric-label">Phones In Stock</span>
-          <div class="metric-icon-box bg-info-subtle text-info">
-            <i class="bi bi-phone" aria-hidden="true"></i>
-          </div>
-        </div>
-        <div class="metric-value">142</div>
-        <div class="metric-footer">
-          <span class="text-primary fw-medium">88 New</span>
-          <span>&middot; 54 Used</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Card 4: Accessories Units -->
-    <div class="col-12 col-sm-6 col-xl-2">
-      <div class="metric-card h-100">
-        <div class="metric-header">
-          <span class="metric-label">Accessories</span>
-          <div class="metric-icon-box bg-purple-subtle text-purple">
-            <i class="bi bi-headphones" aria-hidden="true"></i>
-          </div>
-        </div>
-        <div class="metric-value">1,180</div>
-        <div class="metric-footer">
-          <span class="text-muted">42 active SKUs</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Card 5: Inventory Valuation -->
-    <div class="col-12 col-sm-6 col-xl-2">
-      <div class="metric-card h-100">
-        <div class="metric-header">
-          <span class="metric-label">Stock Value</span>
-          <div class="metric-icon-box bg-secondary-subtle text-dark">
-            <i class="bi bi-safe" aria-hidden="true"></i>
-          </div>
-        </div>
-        <div class="metric-value font-monospace" style="font-size: 1.15rem;">$184.6k</div>
-        <div class="metric-footer">
-          <span class="text-muted font-monospace">Cost: $138.2k</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Card 6: Low Stock Warning -->
-    <div class="col-12 col-sm-6 col-xl-2">
-      <div class="metric-card h-100">
-        <div class="metric-header">
-          <span class="metric-label">Low Stock</span>
-          <div class="metric-icon-box bg-warning-subtle text-warning">
-            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
-          </div>
-        </div>
-        <div class="metric-value text-warning">4 SKUs</div>
-        <div class="metric-footer">
-          <span class="text-danger fw-semibold">Action required</span>
+      <div class="col-12 col-lg-4">
+        <div class="app-card p-4">
+          <div class="skeleton-block mb-3" style="block-size: 20px; inline-size: 55%;"></div>
+          <div class="skeleton-block" style="block-size: 220px; inline-size: 100%;"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Main Content Row: Charts + Activity -->
-  <div class="row g-4 mb-4">
-    <!-- Left Column: Sales Volume Chart & Recent POS Sales (8 cols) -->
-    <div class="col-12 col-xl-8">
-      <!-- Sales & Revenue Trend Chart Card -->
-      <section class="app-card mb-4" aria-labelledby="sales-chart-title">
-        <div class="app-card-header">
-          <div>
-            <h2 id="sales-chart-title" class="app-card-title">
-              <i class="bi bi-bar-chart-fill text-primary" aria-hidden="true"></i>
-              <span>Sales Cash Flow &amp; Margins (Hourly Distribution)</span>
-            </h2>
-            <small class="text-secondary">Real-time revenue versus wholesale device cost basis</small>
+  <!-- ========================================================================= -->
+  <!-- 1. EXECUTIVE ADMIN DASHBOARD                                             -->
+  <!-- ========================================================================= -->
+  <div *ngIf="!isLoading && isAdmin && adminData">
+    <!-- Actionable Pending Approvals & Low-Stock Command Strip -->
+    <div
+      *ngIf="pendingApprovalsCount > 0 || alertsState.lowStockAccessories.length > 0"
+      class="action-strip app-card mb-4 p-3"
+    >
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="action-strip-badge"><i class="bi bi-lightning-charge-fill"></i> Action Required</span>
+          <span class="small fw-semibold">
+            <span *ngIf="pendingApprovalsCount > 0">{{ pendingApprovalsCount }} pending approval(s)</span>
+            <span *ngIf="pendingApprovalsCount > 0 && alertsState.lowStockAccessories.length > 0"> &middot; </span>
+            <span *ngIf="alertsState.lowStockAccessories.length > 0">{{ alertsState.lowStockAccessories.length }} low-stock accessory SKU(s)</span>
+          </span>
+        </div>
+        <button
+          *ngIf="alertsState.lowStockAccessories.length > 0"
+          type="button"
+          class="btn btn-sm btn-outline-warning py-0 px-2 small"
+          (click)="goToAccessories()"
+        >
+          Inspect Low Stock &rarr;
+        </button>
+      </div>
+
+      <div *ngIf="pendingApprovalsCount > 0" class="row g-2 mt-1">
+        <div *ngFor="let d of alertsState.pendingDiscounts" class="col-12 col-md-6">
+          <div class="approval-ticket p-2 rounded-3 d-flex align-items-center justify-content-between gap-2">
+            <div class="overflow-hidden">
+              <div class="small fw-bold text-truncate">
+                <i class="bi bi-tag-fill text-warning me-1"></i>
+                Discount: {{ d.productName }}
+              </div>
+              <div class="text-muted text-truncate" style="font-size: 0.74rem;">
+                {{ d.requesterName }} asks <strong class="font-monospace">${{ d.requestedPrice | number:'1.2-2' }}</strong>
+                (from ${{ d.defaultPrice | number:'1.2-2' }}) &middot; &ldquo;{{ d.reason }}&rdquo;
+              </div>
+            </div>
+            <div class="d-flex gap-1 flex-shrink-0">
+              <button
+                type="button"
+                class="btn btn-sm btn-success py-1 px-2"
+                [disabled]="reviewingId === d.id"
+                (click)="approveOrRejectDiscount(d.id, d.productName, 'APPROVE')"
+              >
+                <i class="bi bi-check-lg"></i>
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-danger py-1 px-2"
+                [disabled]="reviewingId === d.id"
+                (click)="approveOrRejectDiscount(d.id, d.productName, 'REJECT')"
+              >
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
           </div>
-          <div class="d-flex align-items-center gap-3 small">
-            <span class="d-flex align-items-center gap-1">
-              <span class="legend-box bg-primary rounded-circle" style="inline-size: 10px; block-size: 10px;"></span>
-              <span class="text-secondary">Gross Revenue</span>
+        </div>
+
+        <div *ngFor="let ovr of alertsState.pendingCreditOverrides" class="col-12 col-md-6">
+          <div class="approval-ticket p-2 rounded-3 d-flex align-items-center justify-content-between gap-2">
+            <div class="overflow-hidden">
+              <div class="small fw-bold text-truncate">
+                <i class="bi bi-shield-exclamation text-danger me-1"></i>
+                Credit Override: {{ ovr.customerName }}
+              </div>
+              <div class="text-muted text-truncate" style="font-size: 0.74rem;">
+                +${{ ovr.excessAmount | number:'1.2-2' }} over limit (Sale ${{ ovr.saleAmount | number:'1.2-2' }}) &middot; &ldquo;{{ ovr.reason }}&rdquo;
+              </div>
+            </div>
+            <div class="d-flex gap-1 flex-shrink-0">
+              <button
+                type="button"
+                class="btn btn-sm btn-success py-1 px-2"
+                [disabled]="reviewingId === ovr.id"
+                (click)="approveOrRejectCredit(ovr.id, ovr.customerName, 'APPROVE')"
+              >
+                <i class="bi bi-check-lg"></i>
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-danger py-1 px-2"
+                [disabled]="reviewingId === ovr.id"
+                (click)="approveOrRejectCredit(ovr.id, ovr.customerName, 'REJECT')"
+              >
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 1: Primary Financial KPI Cards -->
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Today's Sales</span>
+            <div class="metric-icon-box bg-primary-subtle text-primary">
+              <i class="bi bi-currency-dollar"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">
+            ${{ adminData.summary.todaySalesRevenue | number: '1.2-2' }}
+          </div>
+          <div class="metric-footer">
+            <span class="fw-semibold">{{ adminData.summary.todaySalesCount }} sales</span>
+            <span class="text-muted">&middot; Avg ${{ adminData.summary.averageTransactionValue | number: '1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card accent-info h-100">
+          <div class="metric-header">
+            <span class="metric-label">Monthly Revenue</span>
+            <div class="metric-icon-box bg-info-subtle text-info">
+              <i class="bi bi-calendar-check"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">
+            ${{ adminData.summary.monthlySalesRevenue | number: '1.2-2' }}
+          </div>
+          <div class="metric-footer">
+            <span
+              class="badge"
+              [ngClass]="adminData.summary.revenueGrowthPercentage >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'"
+            >
+              <i class="bi" [ngClass]="adminData.summary.revenueGrowthPercentage >= 0 ? 'bi-arrow-up-right' : 'bi-arrow-down-right'"></i>
+              {{ adminData.summary.revenueGrowthPercentage >= 0 ? '+' : '' }}{{ adminData.summary.revenueGrowthPercentage }}%
             </span>
-            <span class="d-flex align-items-center gap-1">
-              <span class="legend-box bg-secondary rounded-circle" style="inline-size: 10px; block-size: 10px;"></span>
-              <span class="text-secondary">Device Cost Basis</span>
+            <span class="text-muted">vs prior month</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card accent-success h-100">
+          <div class="metric-header">
+            <span class="metric-label">Monthly Gross Profit</span>
+            <div class="metric-icon-box bg-success-subtle text-success">
+              <i class="bi bi-graph-up-arrow"></i>
+            </div>
+          </div>
+          <div class="metric-value text-success font-monospace">
+            ${{ adminData.summary.monthlyGrossProfit | number: '1.2-2' }}
+          </div>
+          <div class="metric-footer">
+            <span class="badge bg-success-subtle text-success font-monospace">
+              {{ adminData.summary.monthlySalesRevenue > 0 ? ((adminData.summary.monthlyGrossProfit / adminData.summary.monthlySalesRevenue) * 100 | number: '1.1-1') : '0.0' }}% Margin
             </span>
+            <span class="text-muted">Net FIFO COGS</span>
           </div>
         </div>
+      </div>
 
-        <div class="app-card-body p-4">
-          <!-- Clean SVG Column & Trend Visualization -->
-          <div class="chart-container" style="block-size: 200px;">
-            <svg viewBox="0 0 600 180" class="w-100 h-100" preserveAspectRatio="none" role="img" aria-label="Sales and Cost Bar Chart">
-              <!-- Horizontal Grid Lines -->
-              <line x1="40" y1="20" x2="580" y2="20" stroke="#f1f5f9" stroke-dasharray="3,3" />
-              <line x1="40" y1="70" x2="580" y2="70" stroke="#f1f5f9" stroke-dasharray="3,3" />
-              <line x1="40" y1="120" x2="580" y2="120" stroke="#f1f5f9" stroke-dasharray="3,3" />
-              <line x1="40" y1="150" x2="580" y2="150" stroke="#e2e8f0" />
-
-              <!-- Y-axis scale labels -->
-              <text x="5" y="24" font-size="10" fill="#94a3b8">$5k</text>
-              <text x="5" y="74" font-size="10" fill="#94a3b8">$3k</text>
-              <text x="5" y="124" font-size="10" fill="#94a3b8">$1k</text>
-
-              <!-- Bars for each time interval -->
-              <!-- Bar 1: 09:00 -->
-              <rect x="70" y="112" width="22" height="38" rx="3" fill="#cbd5e1" opacity="0.8" />
-              <rect x="96" y="100" width="22" height="50" rx="3" fill="#2563eb" />
-              <text x="94" y="168" font-size="11" fill="#64748b" text-anchor="middle">09:00</text>
-
-              <!-- Bar 2: 11:00 -->
-              <rect x="155" y="80" width="22" height="70" rx="3" fill="#cbd5e1" opacity="0.8" />
-              <rect x="181" y="47" width="22" height="103" rx="3" fill="#2563eb" />
-              <text x="179" y="168" font-size="11" fill="#64748b" text-anchor="middle">11:00</text>
-
-              <!-- Bar 3: 13:00 -->
-              <rect x="240" y="106" width="22" height="44" rx="3" fill="#cbd5e1" opacity="0.8" />
-              <rect x="266" y="85" width="22" height="65" rx="3" fill="#2563eb" />
-              <text x="264" y="168" font-size="11" fill="#64748b" text-anchor="middle">13:00</text>
-
-              <!-- Bar 4: 15:00 Peak -->
-              <rect x="325" y="54" width="22" height="96" rx="3" fill="#cbd5e1" opacity="0.8" />
-              <rect x="351" y="25" width="22" height="125" rx="3" fill="#2563eb" />
-              <text x="349" y="168" font-size="11" fill="#64748b" text-anchor="middle">15:00</text>
-
-              <!-- Bar 5: 17:00 -->
-              <rect x="410" y="87" width="22" height="63" rx="3" fill="#cbd5e1" opacity="0.8" />
-              <rect x="436" y="58" width="22" height="92" rx="3" fill="#2563eb" />
-              <text x="434" y="168" font-size="11" fill="#64748b" text-anchor="middle">17:00</text>
-
-              <!-- Bar 6: 19:00 -->
-              <rect x="495" y="115" width="22" height="35" rx="3" fill="#cbd5e1" opacity="0.8" />
-              <rect x="521" y="96" width="22" height="54" rx="3" fill="#2563eb" />
-              <text x="519" y="168" font-size="11" fill="#64748b" text-anchor="middle">19:00</text>
-            </svg>
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card accent-warning h-100">
+          <div class="metric-header">
+            <span class="metric-label">Inventory Asset Value</span>
+            <div class="metric-icon-box bg-warning-subtle text-warning">
+              <i class="bi bi-box-seam"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">
+            ${{ adminData.summary.totalInventoryValuation | number: '1.2-2' }}
+          </div>
+          <div class="metric-footer">
+            <span class="text-muted">Phones: ${{ adminData.summary.phoneInventoryValuation | number: '1.0-0' }}</span>
+            <span class="text-muted">&middot; Acc: ${{ adminData.summary.accessoryInventoryValuation | number: '1.0-0' }}</span>
           </div>
         </div>
+      </div>
+    </div>
 
-        <div class="app-card-footer d-flex align-items-center justify-content-between flex-wrap gap-2">
-          <div class="small text-secondary">
-            <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Peak sales volume reached at <strong>15:00 ($4,890.00)</strong> with 3 iPhone 15 Pro units tendered.
+    <!-- Row 2: Secondary Operational Telemetry -->
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card accent-purple h-100">
+          <div class="metric-header">
+            <span class="metric-label">Serialized Phones</span>
+            <div class="metric-icon-box bg-primary-subtle text-primary">
+              <i class="bi bi-phone"></i>
+            </div>
           </div>
-          <button type="button" class="btn-app btn-app-subtle btn-app-sm text-primary" (click)="goToPos()">
-            <span>Launch POS Register</span>
-            <i class="bi bi-arrow-right" aria-hidden="true"></i>
-          </button>
-        </div>
-      </section>
-
-      <!-- Recent POS Transactions Table Card -->
-      <section class="table-container" aria-labelledby="recent-sales-title">
-        <div class="table-toolbar">
-          <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-receipt text-primary fs-5" aria-hidden="true"></i>
-            <h2 id="recent-sales-title" class="h6 fw-bold mb-0 text-dark">Recent Counter Sales</h2>
+          <div class="metric-value font-monospace">
+            {{ adminData.summary.phonesInStockCount }} <span class="fs-6 fw-normal text-muted">units</span>
           </div>
-          <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-light text-secondary border">Showing last 4 transactions</span>
-            <button type="button" class="btn-app btn-app-secondary btn-app-sm" (click)="goToPos()">
-              <i class="bi bi-plus-lg" aria-hidden="true"></i> New Sale
+          <div class="metric-footer">
+            <span class="badge bg-primary-subtle text-primary">{{ adminData.summary.newPhonesCount }} New</span>
+            <span class="badge bg-secondary-subtle text-secondary">{{ adminData.summary.usedPhonesCount }} Used</span>
+            <button type="button" (click)="goToPhones()" class="btn btn-link btn-sm p-0 ms-auto text-decoration-none small fw-semibold">
+              Manage &rarr;
             </button>
           </div>
         </div>
+      </div>
 
-        <div class="data-table-wrapper">
-          <table class="app-table">
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card accent-info h-100">
+          <div class="metric-header">
+            <span class="metric-label">Accessories Stock</span>
+            <div class="metric-icon-box bg-info-subtle text-info">
+              <i class="bi bi-headphones"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">
+            {{ adminData.summary.accessoriesInStockUnits }} <span class="fs-6 fw-normal text-muted">items</span>
+          </div>
+          <div class="metric-footer">
+            <span *ngIf="adminData.summary.lowStockAccessoriesCount > 0" class="badge bg-warning-subtle text-warning">
+              {{ adminData.summary.lowStockAccessoriesCount }} Low Stock
+            </span>
+            <span *ngIf="!adminData.summary.lowStockAccessoriesCount" class="badge bg-success-subtle text-success">Stock Healthy</span>
+            <button type="button" (click)="goToAccessories()" class="btn btn-link btn-sm p-0 ms-auto text-decoration-none small fw-semibold">
+              Catalog &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card accent-neutral h-100">
+          <div class="metric-header">
+            <span class="metric-label">Today's Purchases</span>
+            <div class="metric-icon-box bg-secondary-subtle text-secondary">
+              <i class="bi bi-bag-check"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">
+            ${{ adminData.summary.todayPurchasesExpenditure | number: '1.2-2' }}
+          </div>
+          <div class="metric-footer">
+            <span class="text-muted">{{ adminData.summary.todayPurchasesCount }} PO(s) received</span>
+            <button type="button" (click)="goToPurchases()" class="btn btn-link btn-sm p-0 ms-auto text-decoration-none small fw-semibold">
+              Inward POs &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card accent-danger h-100">
+          <div class="metric-header">
+            <span class="metric-label">Customer Receivables</span>
+            <div class="metric-icon-box bg-danger-subtle text-danger">
+              <i class="bi bi-cash-stack"></i>
+            </div>
+          </div>
+          <div class="metric-value text-danger font-monospace">
+            ${{ adminData.summary.totalCustomerReceivables | number: '1.2-2' }}
+          </div>
+          <div class="metric-footer">
+            <span class="text-muted">{{ adminData.summary.debtorsCount }} active debtor(s)</span>
+            <button type="button" (click)="goToCustomers()" class="btn btn-link btn-sm p-0 ms-auto text-decoration-none small fw-semibold text-danger">
+              Collect &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3: Interactive 7-Day Telemetry Chart & Top Products Leaderboard -->
+    <div class="row g-4 mb-4">
+      <div class="col-12 col-lg-8">
+        <section class="app-card h-100" aria-label="7-Day Sales and Profit Telemetry">
+          <div class="app-card-header flex-wrap">
+            <div>
+              <h2 class="app-card-title">
+                <i class="bi bi-bar-chart-line-fill text-primary"></i>
+                <span>7-Day Revenue &amp; Gross Profit Telemetry</span>
+              </h2>
+              <div class="text-muted" style="font-size: 0.74rem;">
+                Click or hover any day column to inspect revenue-to-margin ratio
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-3 small">
+              <span class="d-inline-flex align-items-center gap-1 fw-medium">
+                <span class="legend-swatch swatch-rev"></span> Revenue
+              </span>
+              <span class="d-inline-flex align-items-center gap-1 fw-medium">
+                <span class="legend-swatch swatch-prof"></span> Gross Profit
+              </span>
+            </div>
+          </div>
+
+          <div class="app-card-body d-flex flex-column justify-content-between">
+            <div *ngIf="chartPoints.length === 0" class="text-center py-5 text-muted">
+              <i class="bi bi-bar-chart fs-1 opacity-50 d-block mb-2"></i>
+              <div class="fw-semibold">No sales recorded in the last 7 days</div>
+              <small>Complete a sale in POS Express to populate daily telemetry.</small>
+            </div>
+
+            <ng-container *ngIf="chartPoints.length > 0">
+              <!-- Responsive Dual-Bar Telemetry Plot -->
+              <div class="telemetry-chart-shell">
+                <div class="telemetry-gridlines" aria-hidden="true">
+                  <div class="grid-row"><span>${{ chartMaxValue | number:'1.0-0' }}</span></div>
+                  <div class="grid-row"><span>${{ (chartMaxValue * 0.5) | number:'1.0-0' }}</span></div>
+                  <div class="grid-row"><span>$0</span></div>
+                </div>
+
+                <div class="telemetry-columns">
+                  <button
+                    *ngFor="let pt of chartPoints; let idx = index"
+                    type="button"
+                    class="telemetry-col-btn"
+                    [class.is-selected]="selectedDayIndex === idx"
+                    (mouseenter)="selectDay(idx)"
+                    (focus)="selectDay(idx)"
+                    (click)="selectDay(idx)"
+                  >
+                    <div class="bars-pair">
+                      <div
+                        class="bar-pillar bar-revenue"
+                        [style.height.%]="pt.revHeightPct"
+                        [title]="pt.date + ' Revenue: $' + (pt.revenue | number:'1.2-2')"
+                      ></div>
+                      <div
+                        class="bar-pillar bar-profit"
+                        [style.height.%]="pt.profitHeightPct"
+                        [title]="pt.date + ' Gross Profit: $' + (pt.profit | number:'1.2-2')"
+                      ></div>
+                    </div>
+                    <span class="col-date-label font-monospace">{{ pt.shortLabel }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Selected Day Telemetry Inspector Strip -->
+              <div *ngIf="selectedDayPoint" class="telemetry-inspector mt-3 p-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div>
+                  <span class="text-uppercase text-muted fw-bold d-block" style="font-size: 0.66rem; letter-spacing: 0.06em;">
+                    Selected Day
+                  </span>
+                  <span class="font-monospace fw-bold">{{ selectedDayPoint.date }}</span>
+                  <span class="text-muted small ms-2">({{ selectedDayPoint.transactionsCount }} sale{{ selectedDayPoint.transactionsCount === 1 ? '' : 's' }})</span>
+                </div>
+                <div class="d-flex align-items-center gap-4 flex-wrap">
+                  <div>
+                    <span class="text-muted d-block" style="font-size: 0.68rem;">Revenue</span>
+                    <strong class="font-monospace text-primary">${{ selectedDayPoint.revenue | number:'1.2-2' }}</strong>
+                  </div>
+                  <div>
+                    <span class="text-muted d-block" style="font-size: 0.68rem;">Gross Profit</span>
+                    <strong class="font-monospace text-success">+${{ selectedDayPoint.profit | number:'1.2-2' }}</strong>
+                  </div>
+                  <div>
+                    <span class="text-muted d-block" style="font-size: 0.68rem;">Margin</span>
+                    <span class="badge bg-success-subtle text-success font-monospace">{{ selectedDayPoint.marginPct | number:'1.1-1' }}%</span>
+                  </div>
+                </div>
+              </div>
+            </ng-container>
+          </div>
+        </section>
+      </div>
+
+      <!-- Top Selling Products Leaderboard -->
+      <div class="col-12 col-lg-4">
+        <section class="app-card h-100" aria-label="Top Products Leaderboard">
+          <div class="app-card-header">
+            <h2 class="app-card-title">
+              <i class="bi bi-trophy-fill text-warning"></i>
+              <span>Top Performers</span>
+            </h2>
+            <span class="badge bg-light text-secondary border">By Revenue</span>
+          </div>
+          <div class="app-card-body p-0">
+            <div *ngIf="adminData.topSellingProducts.length === 0" class="p-4 text-center text-muted small">
+              No product sales rankings yet.
+            </div>
+
+            <div *ngIf="adminData.topSellingProducts.length > 0" class="p-3 d-flex flex-column gap-3">
+              <div *ngFor="let item of adminData.topSellingProducts; let rank = index" class="leaderboard-row">
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                  <div class="d-flex align-items-center gap-2 overflow-hidden">
+                    <span class="rank-pill" [class.rank-top]="rank === 0">#{{ rank + 1 }}</span>
+                    <div class="overflow-hidden">
+                      <div class="fw-semibold small text-truncate">{{ item.productName }}</div>
+                      <div class="text-muted" style="font-size: 0.7rem;">
+                        {{ item.itemType }} &middot; {{ item.unitsSold }} sold
+                      </div>
+                    </div>
+                  </div>
+                  <div class="text-end font-monospace flex-shrink-0">
+                    <div class="fw-bold small">${{ item.totalRevenue | number: '1.2-2' }}</div>
+                    <div class="text-success" style="font-size: 0.7rem;">+${{ item.totalProfit | number: '1.2-2' }}</div>
+                  </div>
+                </div>
+                <div class="leaderboard-track">
+                  <div
+                    class="leaderboard-fill"
+                    [style.width.%]="(item.totalRevenue / topProductMaxRevenue) * 100"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Row 4: Live Store Activity Center -->
+    <section class="app-card mb-4" aria-label="Recent Store Activity">
+      <div class="app-card-header flex-wrap gap-2">
+        <h2 class="app-card-title">
+          <i class="bi bi-activity text-primary"></i>
+          <span>Live Store Activity Center</span>
+        </h2>
+
+        <div class="segmented-tabs" role="tablist">
+          <button type="button" class="seg-btn" [class.active]="activeActivityTab === 'sales'" (click)="setActivityTab('sales')">
+            <i class="bi bi-receipt"></i> Sales <span class="seg-count">{{ adminData.recentActivity.sales.length }}</span>
+          </button>
+          <button type="button" class="seg-btn" [class.active]="activeActivityTab === 'purchases'" (click)="setActivityTab('purchases')">
+            <i class="bi bi-box-seam"></i> Purchases <span class="seg-count">{{ adminData.recentActivity.purchases.length }}</span>
+          </button>
+          <button type="button" class="seg-btn" [class.active]="activeActivityTab === 'receipts'" (click)="setActivityTab('receipts')">
+            <i class="bi bi-cash-coin"></i> Receipts <span class="seg-count">{{ adminData.recentActivity.receipts.length }}</span>
+          </button>
+          <button type="button" class="seg-btn" [class.active]="activeActivityTab === 'returns'" (click)="setActivityTab('returns')">
+            <i class="bi bi-arrow-left-right"></i> Returns <span class="seg-count">{{ adminData.recentActivity.returns.length }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="app-card-body p-0">
+        <!-- Sales Tab -->
+        <div *ngIf="activeActivityTab === 'sales'" class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
             <thead>
               <tr>
                 <th scope="col">Invoice #</th>
-                <th scope="col">Time</th>
                 <th scope="col">Customer</th>
-                <th scope="col">Items Tendered</th>
-                <th scope="col" class="col-numeric">Total Amount</th>
-                <th scope="col">Payment</th>
+                <th scope="col" class="text-end">Total</th>
+                <th scope="col" class="text-end">Paid</th>
+                <th scope="col" class="text-end">Balance Due</th>
                 <th scope="col">Status</th>
-                <th scope="col" class="text-end">Receipt</th>
+                <th scope="col">Timestamp</th>
+                <th scope="col" class="text-end">Invoice</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let sale of recentSales">
-                <td class="col-mono fw-bold text-primary">{{ sale.invoiceNumber }}</td>
-                <td class="text-secondary small">{{ sale.timestamp }}</td>
-                <td>
-                  <div class="fw-semibold text-dark">{{ sale.customerName }}</div>
-                  <small class="text-muted" *ngIf="sale.customerPhone">{{ sale.customerPhone }}</small>
+              <tr *ngFor="let s of adminData.recentActivity.sales">
+                <td class="font-monospace fw-bold text-primary">{{ s.invoiceNo }}</td>
+                <td class="fw-medium">{{ s.customerName || 'Walk-in Customer' }}</td>
+                <td class="font-monospace fw-semibold text-end">${{ s.totalAmount | number: '1.2-2' }}</td>
+                <td class="font-monospace text-success text-end">${{ s.amountPaid | number: '1.2-2' }}</td>
+                <td class="font-monospace text-end" [ngClass]="s.balanceDue > 0 ? 'text-danger fw-bold' : 'text-muted'">
+                  ${{ s.balanceDue | number: '1.2-2' }}
                 </td>
                 <td>
-                  <div class="small text-dark fw-medium">{{ sale.items[0].name }}</div>
-                  <small class="text-muted" *ngIf="sale.items.length > 1">+{{ sale.items.length - 1 }} other item(s)</small>
-                </td>
-                <td class="col-numeric col-mono fw-bold text-dark">
-                  ${{ sale.total | number:'1.2-2' }}
-                </td>
-                <td>
-                  <span class="badge bg-light text-dark border small">
-                    <i class="bi" [ngClass]="sale.paymentMethod === 'Cash' ? 'bi-cash-coin' : (sale.paymentMethod === 'Bank Transfer' ? 'bi-bank' : 'bi-credit-card')"></i>
-                    {{ sale.paymentMethod }}
+                  <span class="status-pill" [ngClass]="s.paymentStatus === 'PAID' ? 'tone-success' : (s.paymentStatus === 'PARTIAL' ? 'tone-warning' : 'tone-danger')">
+                    <span class="status-dot"></span> {{ s.paymentStatus }}
                   </span>
                 </td>
-                <td>
-                  <app-status-badge
-                    [label]="sale.status"
-                    [tone]="sale.status === 'Completed' ? 'success' : 'warning'"
-                  ></app-status-badge>
-                </td>
+                <td class="text-muted small">{{ s.createdAt | date: 'short' }}</td>
                 <td class="text-end">
-                  <button
-                    type="button"
-                    class="btn-app btn-app-subtle btn-app-sm"
-                    (click)="viewReceipt(sale)"
-                    title="View & Print Thermal Receipt"
-                  >
-                    <i class="bi bi-printer text-primary" aria-hidden="true"></i>
+                  <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" (click)="downloadInvoicePdf(s.id, s.invoiceNo)" title="Download PDF Invoice">
+                    <i class="bi bi-file-earmark-pdf text-danger"></i>
                   </button>
                 </td>
+              </tr>
+              <tr *ngIf="adminData.recentActivity.sales.length === 0">
+                <td colspan="8" class="text-center py-4 text-muted">No recent sales recorded.</td>
               </tr>
             </tbody>
           </table>
         </div>
-      </section>
-    </div>
 
-    <!-- Right Column: Brand Share & Low Stock Alerts (4 cols) -->
-    <div class="col-12 col-xl-4">
-      <!-- Stock Distribution by Brand -->
-      <section class="app-card mb-4" aria-labelledby="brand-dist-title">
-        <div class="app-card-header">
-          <h2 id="brand-dist-title" class="app-card-title">
-            <i class="bi bi-pie-chart-fill text-info" aria-hidden="true"></i>
-            <span>Inventory by Brand</span>
-          </h2>
-          <span class="badge bg-light text-muted border">142 Phones</span>
-        </div>
-
-        <div class="app-card-body p-3">
-          <div class="d-flex flex-column gap-3">
-            <div *ngFor="let b of brandShare">
-              <div class="d-flex align-items-center justify-content-between small mb-1">
-                <span class="fw-semibold text-dark">{{ b.brand }}</span>
-                <span class="font-monospace text-secondary">{{ b.units }} units ({{ b.percentage }}%)</span>
-              </div>
-              <div class="progress" style="block-size: 8px;">
-                <div
-                  class="progress-bar"
-                  role="progressbar"
-                  [style.width.%]="b.percentage"
-                  [style.background-color]="b.color"
-                  [attr.aria-valuenow]="b.percentage"
-                  aria-valuemin="0"
-                  aria-valuemax="100"
-                ></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-4 p-3 rounded bg-light border">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <span class="small fw-semibold text-dark">Condition Breakdown</span>
-              <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace">100% Verified</span>
-            </div>
-            <div class="d-flex gap-2">
-              <div class="p-2 rounded bg-white border flex-grow-1 text-center">
-                <small class="text-muted d-block">Brand New</small>
-                <strong class="text-primary font-monospace">88 Units (62%)</strong>
-              </div>
-              <div class="p-2 rounded bg-white border flex-grow-1 text-center">
-                <small class="text-muted d-block">Pre-Owned A/B</small>
-                <strong class="text-dark font-monospace">54 Units (38%)</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="app-card-footer text-center">
-          <button type="button" class="btn-app btn-app-subtle btn-app-sm text-primary w-100 justify-content-center" (click)="goToPhones()">
-            <span>Manage All 142 Serialized Phones</span>
-            <i class="bi bi-chevron-right" aria-hidden="true"></i>
-          </button>
-        </div>
-      </section>
-
-      <!-- Low Stock & Reorder Watchlist Card -->
-      <section class="app-card" aria-labelledby="low-stock-title">
-        <div class="app-card-header">
-          <h2 id="low-stock-title" class="app-card-title text-warning">
-            <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
-            <span>Low Stock Reorder Alerts</span>
-          </h2>
-          <span class="badge bg-warning-subtle text-warning border border-warning-subtle font-monospace fw-bold">4 Alerts</span>
-        </div>
-
-        <div class="app-card-body p-0">
-          <ul class="list-group list-group-flush mb-0">
-            <li *ngFor="let item of lowStockItems" class="list-group-item p-3 d-flex align-items-center justify-content-between">
-              <div class="overflow-hidden me-2">
-                <div class="fw-semibold text-dark small text-truncate">{{ item.name }}</div>
-                <div class="small text-muted font-monospace" style="font-size: 0.75rem;">
-                  SKU: {{ item.sku }} &middot; {{ item.category }}
-                </div>
-                <div class="d-flex align-items-center gap-1 mt-1">
-                  <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 0.7rem;">
-                    {{ item.stock }} left (Min: {{ item.min }})
+        <!-- Purchases Tab -->
+        <div *ngIf="activeActivityTab === 'purchases'" class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th scope="col">Purchase Order</th>
+                <th scope="col">Supplier</th>
+                <th scope="col" class="text-end">Total Cost</th>
+                <th scope="col">Status</th>
+                <th scope="col">Date</th>
+                <th scope="col" class="text-end">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of adminData.recentActivity.purchases">
+                <td class="font-monospace fw-bold text-primary">{{ p.purchaseNo }}</td>
+                <td class="fw-medium">{{ p.supplierName }}</td>
+                <td class="font-monospace fw-semibold text-end">${{ p.totalAmount | number: '1.2-2' }}</td>
+                <td>
+                  <span class="status-pill" [ngClass]="p.status === 'CONFIRMED' ? 'tone-success' : 'tone-warning'">
+                    <span class="status-dot"></span> {{ p.status }}
                   </span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                class="btn-app btn-app-secondary btn-app-sm flex-shrink-0"
-                (click)="quickReorder(item)"
-                title="Create Purchase Reorder"
-              >
-                <i class="bi bi-cart-plus" aria-hidden="true"></i> Reorder
-              </button>
-            </li>
-          </ul>
+                </td>
+                <td class="text-muted small font-monospace">{{ p.date }}</td>
+                <td class="text-end">
+                  <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" (click)="goToPurchases()">
+                    Open POs &rarr;
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="adminData.recentActivity.purchases.length === 0">
+                <td colspan="6" class="text-center py-4 text-muted">No recent purchase orders found.</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </section>
-    </div>
+
+        <!-- Receipts Tab -->
+        <div *ngIf="activeActivityTab === 'receipts'" class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th scope="col">Receipt #</th>
+                <th scope="col">Invoice #</th>
+                <th scope="col">Customer</th>
+                <th scope="col" class="text-end">Amount Received</th>
+                <th scope="col">Method</th>
+                <th scope="col">Timestamp</th>
+                <th scope="col" class="text-end">PDF</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of adminData.recentActivity.receipts">
+                <td class="font-monospace fw-bold text-success">{{ r.receiptNo }}</td>
+                <td class="font-monospace text-muted">{{ r.invoiceNo || 'N/A' }}</td>
+                <td class="fw-medium">{{ r.customerName }}</td>
+                <td class="font-monospace text-success fw-bold text-end">+${{ r.amountReceived | number: '1.2-2' }}</td>
+                <td><span class="badge bg-light text-secondary border">{{ r.paymentMethod }}</span></td>
+                <td class="text-muted small">{{ r.createdAt | date: 'short' }}</td>
+                <td class="text-end">
+                  <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" (click)="downloadReceiptPdf(r.id, r.receiptNo)" title="Download Receipt PDF">
+                    <i class="bi bi-file-earmark-pdf text-danger"></i>
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="adminData.recentActivity.receipts.length === 0">
+                <td colspan="7" class="text-center py-4 text-muted">No recent payment receipts recorded.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Returns Tab -->
+        <div *ngIf="activeActivityTab === 'returns'" class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th scope="col">Return #</th>
+                <th scope="col">Invoice #</th>
+                <th scope="col">Type</th>
+                <th scope="col" class="text-end">Refund</th>
+                <th scope="col">Reason</th>
+                <th scope="col">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let rt of adminData.recentActivity.returns">
+                <td class="font-monospace fw-bold text-danger">{{ rt.returnNo }}</td>
+                <td class="font-monospace text-muted">{{ rt.invoiceNo || 'N/A' }}</td>
+                <td><span class="badge bg-secondary-subtle text-secondary border">{{ rt.returnType }}</span></td>
+                <td class="font-monospace text-danger fw-bold text-end">-${{ rt.refundAmount | number: '1.2-2' }}</td>
+                <td class="text-truncate" style="max-inline-size: 240px;">{{ rt.reason }}</td>
+                <td class="text-muted small">{{ rt.createdAt | date: 'short' }}</td>
+              </tr>
+              <tr *ngIf="adminData.recentActivity.returns.length === 0">
+                <td colspan="6" class="text-center py-4 text-muted">No return transactions recorded.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   </div>
-</div>
 
-<!-- Thermal Slip Printable Receipt Dialog -->
-<div *ngIf="showReceiptModal && selectedReceiptSale" class="drawer-backdrop" (click)="closeReceipt()" aria-hidden="true"></div>
-<div
-  *ngIf="showReceiptModal && selectedReceiptSale"
-  class="modal-dialog-receipt"
-  role="dialog"
-  aria-modal="true"
-  aria-label="Thermal POS Receipt"
->
-  <div class="printable-receipt bg-white p-4 shadow-lg rounded border">
-    <div class="text-center mb-3">
-      <div class="fw-bold text-dark fs-5">ApexCellular POS</div>
-      <div class="small text-muted">Downtown Flagship &middot; Store #01</div>
-      <div class="small text-muted">Tel: +1 (555) 019-2834</div>
-      <div class="small font-monospace text-secondary mt-1">TAX ID: US-849201948</div>
-    </div>
-
-    <div class="border-top border-bottom border-dashed py-2 my-2 small">
-      <div class="d-flex justify-content-between">
-        <span>Invoice:</span>
-        <strong class="font-monospace">{{ selectedReceiptSale.invoiceNumber }}</strong>
-      </div>
-      <div class="d-flex justify-content-between">
-        <span>Date:</span>
-        <span>{{ selectedReceiptSale.timestamp }}</span>
-      </div>
-      <div class="d-flex justify-content-between">
-        <span>Customer:</span>
-        <span>{{ selectedReceiptSale.customerName }}</span>
-      </div>
-      <div class="d-flex justify-content-between">
-        <span>Cashier:</span>
-        <span>{{ selectedReceiptSale.cashierName }}</span>
-      </div>
-    </div>
-
-    <!-- Items List -->
-    <div class="py-2 small">
-      <div *ngFor="let it of selectedReceiptSale.items" class="mb-2">
-        <div class="d-flex justify-content-between">
-          <span class="fw-bold text-dark">{{ it.name }}</span>
-          <span class="font-monospace">${{ (it.price * it.quantity) | number:'1.2-2' }}</span>
-        </div>
-        <div class="text-muted d-flex justify-content-between" style="font-size: 0.75rem;">
-          <span>{{ it.quantity }} x ${{ it.price | number:'1.2-2' }}</span>
-          <span *ngIf="it.imei" class="font-monospace">IMEI: {{ it.imei }}</span>
+  <!-- ========================================================================= -->
+  <!-- 2. SHOPKEEPER OPERATIONAL DASHBOARD (Costs & Margins Strictly Hidden)    -->
+  <!-- ========================================================================= -->
+  <div *ngIf="!isLoading && !isAdmin && shopkeeperData">
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Store Sales Today</span>
+            <div class="metric-icon-box bg-primary-subtle text-primary"><i class="bi bi-cart-check"></i></div>
+          </div>
+          <div class="metric-value font-monospace">${{ shopkeeperData.todayRegisterSales | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">{{ shopkeeperData.todayRegisterTransactionsCount }} register transactions</span>
+          </div>
         </div>
       </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card accent-success h-100">
+          <div class="metric-header">
+            <span class="metric-label">My Sales Today</span>
+            <div class="metric-icon-box bg-success-subtle text-success"><i class="bi bi-person-check"></i></div>
+          </div>
+          <div class="metric-value text-success font-monospace">${{ shopkeeperData.myTodaySalesRevenue | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="badge bg-success-subtle text-success">{{ cashierSharePct }}% of store</span>
+            <span class="text-muted">{{ shopkeeperData.myTodayTransactionsCount }} invoice(s)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card accent-info h-100">
+          <div class="metric-header">
+            <span class="metric-label">Available Phones</span>
+            <div class="metric-icon-box bg-info-subtle text-info"><i class="bi bi-phone"></i></div>
+          </div>
+          <div class="metric-value font-monospace">{{ shopkeeperData.availablePhonesCount }} <span class="fs-6 fw-normal text-muted">units</span></div>
+          <div class="metric-footer">
+            <button type="button" (click)="goToPhones()" class="btn btn-link btn-sm p-0 text-decoration-none small fw-semibold">
+              Browse Serialized Stock &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card accent-warning h-100">
+          <div class="metric-header">
+            <span class="metric-label">Available Accessories</span>
+            <div class="metric-icon-box bg-warning-subtle text-warning"><i class="bi bi-headphones"></i></div>
+          </div>
+          <div class="metric-value font-monospace">{{ shopkeeperData.availableAccessoriesUnits }} <span class="fs-6 fw-normal text-muted">items</span></div>
+          <div class="metric-footer">
+            <button type="button" (click)="goToAccessories()" class="btn btn-link btn-sm p-0 text-decoration-none small fw-semibold">
+              Browse Accessories &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="border-top border-dashed pt-2 small">
-      <div class="d-flex justify-content-between mb-1">
-        <span>Subtotal:</span>
-        <span class="font-monospace">${{ selectedReceiptSale.subtotal | number:'1.2-2' }}</span>
+    <!-- Signature Obsidian POS Express Launchpad -->
+    <div class="pos-launchpad p-4 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div>
+        <div class="d-inline-flex align-items-center gap-2 mb-2 px-2 py-1 rounded-pill" style="background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(129, 140, 248, 0.35); font-size: 0.72rem; color: #c7d2fe;">
+          <span class="status-dot-sm bg-success rounded-circle" style="width: 7px; height: 7px; display: inline-block;"></span>
+          Express Checkout Ready
+        </div>
+        <h2 class="h4 fw-bold text-white mb-1">Point of Sale Terminal</h2>
+        <p class="mb-0 small" style="color: #94a3b8; max-inline-size: 56ch;">
+          Instant IMEI &amp; barcode scanning, multi-tender split payments, parked cart recall, and thermal receipt printing.
+        </p>
       </div>
-      <div class="d-flex justify-content-between mb-1" *ngIf="selectedReceiptSale.discount > 0">
-        <span>Discount:</span>
-        <span class="font-monospace text-danger">-${{ selectedReceiptSale.discount | number:'1.2-2' }}</span>
-      </div>
-      <div class="d-flex justify-content-between mb-1">
-        <span>Sales Tax (5%):</span>
-        <span class="font-monospace">${{ selectedReceiptSale.tax | number:'1.2-2' }}</span>
-      </div>
-      <div class="d-flex justify-content-between fw-bold fs-6 text-dark pt-1 border-top">
-        <span>TOTAL DUE:</span>
-        <span class="font-monospace">${{ selectedReceiptSale.total | number:'1.2-2' }}</span>
-      </div>
-      <div class="d-flex justify-content-between text-muted small mt-1">
-        <span>Paid via:</span>
-        <span>{{ selectedReceiptSale.paymentMethod }}</span>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <button type="button" class="btn btn-outline-light btn-sm px-3 py-2" (click)="goToReturns()">
+          <i class="bi bi-arrow-left-right me-1"></i> Returns
+        </button>
+        <button type="button" class="btn btn-light fw-bold px-4 py-2 text-dark" (click)="goToPos()">
+          <i class="bi bi-upc-scan me-2 text-primary"></i> Launch POS Register
+        </button>
       </div>
     </div>
 
-    <div class="text-center mt-3 pt-2 border-top border-dashed small text-muted" style="font-size: 0.7rem;">
-      Thank you for your purchase!<br />
-      IMEI devices are backed by 90-day store warranty.<br />
-      Returns accepted within 14 days with original receipt.
-    </div>
+    <!-- Cashier Recent Sales -->
+    <section class="app-card" aria-label="My Recent Sales">
+      <div class="app-card-header">
+        <h2 class="app-card-title">
+          <i class="bi bi-clock-history text-primary"></i>
+          <span>My Recent Sales</span>
+        </h2>
+        <span class="badge bg-light text-secondary border">Cashier Register Log</span>
+      </div>
+      <div class="app-card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th scope="col">Invoice #</th>
+                <th scope="col">Customer</th>
+                <th scope="col" class="text-end">Total</th>
+                <th scope="col">Payment Status</th>
+                <th scope="col">Timestamp</th>
+                <th scope="col" class="text-end">Invoice PDF</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let s of shopkeeperData.recentSales">
+                <td class="font-monospace fw-bold text-primary">{{ s.invoiceNo }}</td>
+                <td class="fw-medium">{{ s.customerName || 'Walk-in Customer' }}</td>
+                <td class="font-monospace fw-semibold text-end">${{ s.totalAmount | number: '1.2-2' }}</td>
+                <td>
+                  <span class="status-pill" [ngClass]="s.paymentStatus === 'PAID' ? 'tone-success' : (s.paymentStatus === 'PARTIAL' ? 'tone-warning' : 'tone-danger')">
+                    <span class="status-dot"></span> {{ s.paymentStatus }}
+                  </span>
+                </td>
+                <td class="text-muted small">{{ s.createdAt | date: 'short' }}</td>
+                <td class="text-end">
+                  <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" (click)="downloadInvoicePdf(s.id, s.invoiceNo)">
+                    <i class="bi bi-file-earmark-pdf text-danger"></i>
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="shopkeeperData.recentSales.length === 0">
+                <td colspan="6" class="text-center py-4 text-muted">No recent sales processed by your account.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
 
-    <div class="d-flex gap-2 mt-3 pt-2 border-top no-print">
-      <button type="button" class="btn-app btn-app-secondary w-50" (click)="closeReceipt()">
-        Close
+  <!-- Fallback State -->
+  <div *ngIf="!isLoading && !isAdmin && !shopkeeperData" class="app-card p-5 text-center my-4">
+    <i class="bi bi-shield-lock text-muted fs-1 mb-2 d-block"></i>
+    <h5 class="fw-bold">Dashboard Metrics Unavailable</h5>
+    <p class="text-muted small mb-3">Your role permissions may be restricted or metrics could not be loaded.</p>
+    <div class="d-flex justify-content-center gap-2">
+      <button type="button" class="btn-app btn-app-secondary btn-app-sm" (click)="loadDashboardData()">
+        <i class="bi bi-arrow-clockwise"></i> Retry
       </button>
-      <button type="button" class="btn-app btn-app-primary w-50" (click)="printReceipt()">
-        <i class="bi bi-printer" aria-hidden="true"></i> Print Slip
+      <button *ngIf="auth.hasPermission('pos.access')" type="button" class="btn-app btn-app-primary btn-app-sm" (click)="goToPos()">
+        <i class="bi bi-upc-scan"></i> Open POS Register
       </button>
     </div>
   </div>

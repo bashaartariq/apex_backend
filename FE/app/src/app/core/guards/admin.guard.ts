@@ -20,6 +20,15 @@ export class AdminGuard implements CanActivate {
   ) {}
 
   canActivate(_route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): boolean | UrlTree {
+    if (!this.auth.isAuthenticated) {
+      return this.router.createUrlTree(['/login'], { queryParams: { returnUrl: _state.url } });
+    }
+
+    if (this.auth.isTokenExpired()) {
+      this.auth.handleSessionExpired(_state.url);
+      return false;
+    }
+
     if (this.auth.isAdmin()) {
       return true;
     }

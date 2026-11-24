@@ -22,6 +22,12 @@ export class GuestGuard implements CanActivate {
       return true;
     }
 
+    // If session is present in localStorage but token is expired, clean it up and permit guest access
+    if (this.auth.isTokenExpired()) {
+      this.auth.clearSession();
+      return true;
+    }
+
     return this.router.createUrlTree(['/dashboard']);
   }
 }

@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { UserManagementService } from '../../core/services/user-management.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -15,11 +16,12 @@ interface ModulePermissionsGroup {
   templateUrl: './users.component.html',
   styleUrls: ['./users.component.scss'],
 })
-export class UsersComponent implements OnInit {
+export class UsersComponent implements OnInit, OnDestroy {
   staffList: StaffUser[] = [];
   filteredStaff: StaffUser[] = [];
   permissionsCatalog: PermissionDefinition[] = [];
   groupedPermissions: ModulePermissionsGroup[] = [];
+  private readonly sub = new Subscription();
 
   loading = true;
   searchQuery = '';
@@ -65,6 +67,17 @@ export class UsersComponent implements OnInit {
     this.loadStaff();
   }
 
+  ngOnDestroy(): void {
+    this.sub.unsubscribe();
+  }
+
+  @HostListener('window:keydown.escape')
+  handleEscape(): void {
+    if (this.showAddModal || this.showEditModal || this.showPermsModal) {
+      this.closeModals();
+    }
+  }
+
   get activeStaffCount(): number {
     return this.staffList.filter((u) => u.status === 'ACTIVE').length;
   }
@@ -78,15 +91,17 @@ export class UsersComponent implements OnInit {
   }
 
   loadCatalog(): void {
-    this.userMgmt.getPermissionsCatalog().subscribe({
-      next: (perms) => {
-        this.permissionsCatalog = perms;
-        this.groupPermissions(perms);
-      },
-      error: () => {
-        this.toast.error('Could not load permissions catalog.');
-      },
-    });
+    this.sub.add(
+      this.userMgmt.getPermissionsCatalog().subscribe({
+        next: (perms) => {
+          this.permissionsCatalog = perms;
+          this.groupPermissions(perms);
+        },
+        error: () => {
+          this.toast.error('Could not load permissions catalog.');
+        },
+      })
+    );
   }
 
   groupPermissions(perms: PermissionDefinition[]): void {
@@ -104,17 +119,19 @@ export class UsersComponent implements OnInit {
 
   loadStaff(): void {
     this.loading = true;
-    this.userMgmt.listUsers().subscribe({
-      next: (users) => {
-        this.staffList = users;
-        this.applyFilter();
-        this.loading = false;
-      },
-      error: (err) => {
-        this.loading = false;
-        this.toast.error(err.error?.message || 'Failed to load staff roster.');
-      },
-    });
+    this.sub.add(
+      this.userMgmt.listUsers().subscribe({
+        next: (users) => {
+          this.staffList = users;
+          this.applyFilter();
+          this.loading = false;
+        },
+        error: (err) => {
+          this.loading = false;
+          this.toast.error(err.error?.message || 'Failed to load staff roster.');
+        },
+      })
+    );
   }
 
   applyFilter(): void {
@@ -192,6 +209,35 @@ export class UsersComponent implements OnInit {
     this.selectedUserPerms.clear();
   }
 
+  applyRolePreset(preset: 'CASHIER' | 'INVENTORY' | 'MANAGER'): void {
+    this.selectedUserPerms.clear();
+    const presets: Record<'CASHIER' | 'INVENTORY' | 'MANAGER', string[]> = {
+      CASHIER: ['dashboard.view', 'pos.access', 'customers.view', 'customers.manage', 'returns.manage', 'warranty.manage'],
+      INVENTORY: ['dashboard.view', 'inventory.view', 'phones.view', 'accessories.view', 'purchases.view', 'suppliers.view'],
+      MANAGER: [
+        'dashboard.view',
+        'pos.access',
+        'inventory.view',
+        'phones.view',
+        'accessories.view',
+        'purchases.view',
+        'suppliers.view',
+        'customers.view',
+        'customers.manage',
+        'returns.manage',
+        'warranty.manage',
+        'reports.view',
+      ],
+    };
+    const validIds = new Set(this.permissionsCatalog.map((p) => p.id));
+    for (const id of presets[preset]) {
+      if (validIds.size === 0 || validIds.has(id)) {
+        this.selectedUserPerms.add(id);
+      }
+    }
+    this.toast.info('Preset Applied', `Loaded ${preset.toLowerCase()} permission profile (${this.selectedUserPerms.size} rights).`);
+  }
+
   // --- Form Submissions ---
   submitAddStaff(): void {
     if (this.addStaffForm.invalid) {
@@ -220,6 +266,15 @@ export class UsersComponent implements OnInit {
         },
         error: (err) => {
           this.submitting = false;
+          if (err?.error?.fieldErrors) {
+            for (const [field, msg] of Object.entries(err.error.fieldErrors as Record<string, string>)) {
+              const control = this.addStaffForm.get(field);
+              if (control) {
+                control.setErrors({ serverError: msg });
+                control.markAsTouched();
+              }
+            }
+          }
           this.toast.error(err.error?.message || 'Could not create staff account.');
         },
       });
@@ -248,6 +303,15 @@ export class UsersComponent implements OnInit {
         },
         error: (err) => {
           this.submitting = false;
+          if (err?.error?.fieldErrors) {
+            for (const [field, msg] of Object.entries(err.error.fieldErrors as Record<string, string>)) {
+              const control = this.editStaffForm.get(field);
+              if (control) {
+                control.setErrors({ serverError: msg });
+                control.markAsTouched();
+              }
+            }
+          }
           this.toast.error(err.error?.message || 'Could not update staff member.');
         },
       });

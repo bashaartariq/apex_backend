@@ -1,37 +1,26 @@
 .users-container {
-  background-color: var(--bg-canvas, #f8fafc);
-  min-height: calc(100vh - 60px);
-}
-
-.stat-card {
-  border-radius: 10px;
-  border-color: var(--border-subtle, #e2e8f0) !important;
+  background-color: var(--ms-bg-app);
+  min-block-size: calc(100vh - var(--ms-header-height));
 }
 
 .avatar-badge {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  letter-spacing: 0.05em;
-  background-color: #2563eb;
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: 9px;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  background: var(--ms-brand-gradient);
 }
 
 .permission-grid {
-  max-height: 280px;
+  max-block-size: 280px;
   overflow-y: auto;
 }
 
 .hover-bg {
-  transition: background-color 0.15s ease-in-out;
+  transition: background-color 0.14s ease;
 
   &:hover {
-    background-color: #f1f5f9;
+    background-color: var(--ms-bg-hover);
   }
-}
-
-.table th {
-  font-size: 0.75rem;
-  letter-spacing: 0.05em;
-  border-bottom-width: 1px;
 }

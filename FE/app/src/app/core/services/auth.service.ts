@@ -27,6 +27,9 @@ export class AuthService {
   private readonly currentShopSubject = new BehaviorSubject<Shop | null>(this.getStoredShop());
   private token: string | null = localStorage.getItem(TOKEN_KEY);
 
+  private tokenRefreshTimer?: any;
+  private isHandlingExpiration = false;
+
   readonly currentUser$: Observable<User | null> = this.currentUserSubject.asObservable();
   readonly currentShop$: Observable<Shop | null> = this.currentShopSubject.asObservable();
   readonly isAuthenticated$: Observable<boolean> = this.currentUser$.pipe(
@@ -39,10 +42,13 @@ export class AuthService {
     private readonly tenantContext: TenantContextService,
     private readonly toast: ToastService
   ) {
-    // If session restored from localStorage, sync tenant context
+    // If session restored from localStorage, sync tenant context & schedule token refresh
     const currentShop = this.currentShopSubject.value;
     if (currentShop) {
       this.tenantContext.setActiveShopId(currentShop.id);
+    }
+    if (this.token && !this.isTokenExpired()) {
+      this.scheduleTokenRefresh();
     }
   }
 
@@ -73,6 +79,84 @@ export class AuthService {
     return user.permissions?.includes(permissionId) || false;
   }
 
+  /**
+   * Decodes JWT token payload and checks if token is expired based on `exp` claim.
+   */
+  isTokenExpired(token?: string | null): boolean {
+    const raw = token !== undefined ? token : this.token;
+    if (!raw) return true;
+    try {
+      const parts = raw.split('.');
+      if (parts.length !== 3) return true;
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const payload = JSON.parse(jsonPayload);
+      if (!payload.exp) return false;
+      // Consider expired 5 seconds before actual expiration to handle clock skew
+      return Date.now() >= payload.exp * 1000 - 5000;
+    } catch {
+      return true;
+    }
+  }
+
+  /**
+   * Centralized session expiration handler.
+   * Deduplicates simultaneous 401s, clears all storage, notifies user, and redirects to /login.
+   */
+  handleSessionExpired(returnUrl?: string): void {
+    if (this.isHandlingExpiration) {
+      return;
+    }
+    this.isHandlingExpiration = true;
+
+    const currentUrl = returnUrl || this.router.url;
+    const sanitizedReturn =
+      currentUrl && !currentUrl.includes('/login') && !currentUrl.includes('/register')
+        ? currentUrl
+        : '/dashboard';
+
+    this.clearSession();
+    this.toast.error('Session Expired', 'Your session has expired. Please sign in again.');
+
+    this.router
+      .navigate(['/login'], { queryParams: { returnUrl: sanitizedReturn } })
+      .finally(() => {
+        setTimeout(() => {
+          this.isHandlingExpiration = false;
+        }, 800);
+      });
+  }
+
+  /**
+   * Proactively refreshes access token using backend refresh token.
+   */
+  refreshToken(): Observable<string | null> {
+    return this.http
+      .post<{ success: boolean; accessToken: string }>(
+        `${this.apiUrl}/auth/refresh`,
+        {},
+        { withCredentials: true }
+      )
+      .pipe(
+        map((res) => {
+          if (res.success && res.accessToken) {
+            this.token = res.accessToken;
+            localStorage.setItem(TOKEN_KEY, res.accessToken);
+            this.scheduleTokenRefresh();
+            return res.accessToken;
+          }
+          return null;
+        }),
+        catchError(() => of(null))
+      );
+  }
+
   login(credentials: LoginRequest): Observable<LoginResponse> {
     return this.http
       .post<LoginResponse>(`${this.apiUrl}/auth/login`, credentials, { withCredentials: true })
@@ -96,6 +180,8 @@ export class AuthService {
   }
 
   checkAuth(): Observable<boolean> {
+    const hasStoredSession = !!this.token || !!localStorage.getItem(USER_KEY);
+
     return this.http
       .get<{ success: boolean; user: User; shop: Shop }>(`${this.apiUrl}/auth/me`, {
         withCredentials: true,
@@ -106,11 +192,19 @@ export class AuthService {
             this.setSession(this.token || '', res.user, res.shop);
             return true;
           }
-          this.clearSession();
+          if (hasStoredSession) {
+            this.handleSessionExpired();
+          } else {
+            this.clearSession();
+          }
           return false;
         }),
         catchError(() => {
-          this.clearSession();
+          if (hasStoredSession) {
+            this.handleSessionExpired();
+          } else {
+            this.clearSession();
+          }
           return of(false);
         })
       );
@@ -146,9 +240,11 @@ export class AuthService {
     this.currentUserSubject.next(user);
     this.currentShopSubject.next(shop);
     this.tenantContext.setActiveShopId(shop.id);
+    this.scheduleTokenRefresh();
   }
 
-  private clearSession(): void {
+  clearSession(): void {
+    this.cancelTokenTimer();
     this.token = null;
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
@@ -156,6 +252,43 @@ export class AuthService {
     this.currentUserSubject.next(null);
     this.currentShopSubject.next(null);
     this.tenantContext.setActiveShopId(null);
+  }
+
+  private scheduleTokenRefresh(): void {
+    this.cancelTokenTimer();
+    if (!this.token) return;
+
+    try {
+      const parts = this.token.split('.');
+      if (parts.length !== 3) return;
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(atob(base64));
+      if (!payload.exp) return;
+
+      const expiresAtMs = payload.exp * 1000;
+      // Refresh 60 seconds before access token expires
+      const delayMs = Math.max(0, expiresAtMs - Date.now() - 60000);
+
+      this.tokenRefreshTimer = setTimeout(() => {
+        if (this.isAuthenticated) {
+          this.refreshToken().subscribe((newToken) => {
+            if (!newToken && this.isAuthenticated) {
+              this.handleSessionExpired();
+            }
+          });
+        }
+      }, delayMs);
+    } catch {
+      // Ignore parse failure
+    }
+  }
+
+  private cancelTokenTimer(): void {
+    if (this.tokenRefreshTimer) {
+      clearTimeout(this.tokenRefreshTimer);
+      this.tokenRefreshTimer = undefined;
+    }
   }
 
   private getStoredUser(): User | null {

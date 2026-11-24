@@ -1,7 +1,7 @@
-<header class="app-header shadow-xs bg-white border-bottom position-sticky top-0" style="z-index: 1030;">
-  <div class="container-fluid px-3 d-flex align-items-center justify-content-between h-100">
-    <!-- Left Section: Toggle & Search -->
-    <div class="d-flex align-items-center gap-2 gap-md-3">
+<header class="app-header position-sticky top-0" style="z-index: 1030;">
+  <div class="container-fluid px-3 px-lg-4 d-flex align-items-center justify-content-between h-100 gap-2">
+    <!-- Left Section: Sidebar Toggles, Active Tenant Identity & Live Telemetry -->
+    <div class="d-flex align-items-center gap-2">
       <!-- Mobile sidebar toggle -->
       <button
         type="button"
@@ -23,74 +23,404 @@
         <i class="bi" [ngClass]="sidebarCollapsed ? 'bi-layout-sidebar-inset' : 'bi-layout-sidebar'" aria-hidden="true"></i>
       </button>
 
-      <!-- Authenticated Shop / Tenant Indicator -->
-      <div class="tenant-badge d-flex align-items-center gap-2 border rounded px-2 py-1 bg-light">
-        <span class="tenant-dot"></span>
-        <div class="text-start d-none d-sm-block">
-          <span class="d-block fw-semibold text-dark lh-1 small">{{ currentShopName }}</span>
-          <small class="text-muted font-monospace" style="font-size: 0.6875rem;">{{ currentShopId }}</small>
+      <!-- Tenant Workspace Pill -->
+      <div class="tenant-pill d-flex align-items-center gap-2">
+        <span class="tenant-avatar">
+          <i class="bi bi-shop-window"></i>
+        </span>
+        <div class="d-none d-sm-flex flex-column lh-1">
+          <span class="tenant-name text-truncate" [title]="currentShopName">{{ currentShopName }}</span>
+          <span class="tenant-role">{{ auth.isAdmin() ? 'Enterprise Admin' : 'POS Operator' }}</span>
         </div>
       </div>
 
-      <!-- Global Search Input (Linear / Invento style) -->
-      <div class="search-input-group d-none d-lg-flex" style="inline-size: 300px;">
-        <i class="bi bi-search search-icon" aria-hidden="true"></i>
+      <!-- Live API / SQLite Telemetry Pill -->
+      <button
+        type="button"
+        class="telemetry-pill d-none d-lg-inline-flex align-items-center gap-2"
+        [ngClass]="'tone-' + connectionTone"
+        [title]="connectionTitle"
+        (click)="recheckConnectivity.emit()"
+      >
+        <span class="telemetry-dot" [class.is-live]="apiConnected && !apiChecking"></span>
+        <span>{{ connectionLabel }}</span>
+      </button>
+    </div>
+
+    <!-- Center Section: Command Palette & Multi-Tenant Global Search (⌘K) -->
+    <div
+      #searchContainer
+      class="header-search-wrapper position-relative flex-grow-1"
+    >
+      <div class="command-bar d-flex align-items-center px-3">
+        <i *ngIf="!isSearching" class="bi bi-search command-icon me-2" aria-hidden="true"></i>
+        <div *ngIf="isSearching" class="spinner-border spinner-border-sm text-primary me-2" role="status" style="width: 0.95rem; height: 0.95rem;">
+          <span class="visually-hidden">Searching...</span>
+        </div>
+
         <input
-          #searchBox
+          #searchInput
           type="search"
-          class="app-input"
-          placeholder="Search devices, IMEI, customer..."
-          (keyup.enter)="onGlobalSearch(searchBox.value)"
+          class="command-input flex-grow-1"
+          placeholder="Search IMEI, model, SKU, customer, invoice — or jump..."
+          [formControl]="searchControl"
+          (focus)="onSearchFocus()"
+          (keydown)="onSearchKeyDown($event)"
+          autocomplete="off"
+          aria-label="Global search and command palette"
         />
-        <span class="search-shortcut">⌘K</span>
+
+        <button
+          *ngIf="searchQuery"
+          type="button"
+          class="btn btn-sm btn-link p-0 text-muted ms-1 text-decoration-none"
+          (click)="clearSearch()"
+          aria-label="Clear search query"
+        >
+          <i class="bi bi-x-circle-fill"></i>
+        </button>
+
+        <kbd *ngIf="!searchQuery" class="command-kbd d-none d-md-inline-flex ms-2">⌘K</kbd>
+      </div>
+
+      <!-- Command Bar / Search Results Popover -->
+      <div
+        *ngIf="showSearchDropdown"
+        class="command-popover shadow-lg position-absolute start-0 w-100 mt-2"
+      >
+        <!-- Mode A: Quick Commands when search input is empty -->
+        <ng-container *ngIf="!searchQuery">
+          <div class="popover-section-label px-3 py-2 d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-lightning-charge-fill text-primary me-1"></i> Quick Workspace Jumps</span>
+            <span class="opacity-75">Keyboard Ready</span>
+          </div>
+          <div class="py-1">
+            <button
+              *ngFor="let cmd of quickCommands; let idx = index"
+              type="button"
+              class="command-row w-100 text-start border-0 bg-transparent px-3 py-2 d-flex align-items-center justify-content-between"
+              [class.active]="activeItemIndex === idx"
+              (click)="runQuickCommand(cmd)"
+            >
+              <div class="d-flex align-items-center gap-3 overflow-hidden">
+                <div class="command-row-icon">
+                  <i class="bi" [ngClass]="cmd.icon"></i>
+                </div>
+                <div class="overflow-hidden">
+                  <div class="fw-semibold small text-truncate">{{ cmd.title }}</div>
+                  <div class="text-muted text-truncate" style="font-size: 0.72rem;">{{ cmd.subtitle }}</div>
+                </div>
+              </div>
+              <i class="bi bi-arrow-return-left text-muted small flex-shrink-0 ms-2"></i>
+            </button>
+          </div>
+        </ng-container>
+
+        <!-- Mode B: Live Multi-Tenant Search Results -->
+        <ng-container *ngIf="searchQuery">
+          <div *ngIf="isSearching" class="p-4 text-center text-muted small">
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+            Querying serialized inventory, customers, invoices, and vendors...
+          </div>
+
+          <div *ngIf="hasSearched && !isSearching && allResults.length === 0" class="p-4 text-center">
+            <i class="bi bi-search text-muted fs-3 d-block mb-2"></i>
+            <div class="fw-semibold small">No matches for &ldquo;{{ searchQuery }}&rdquo;</div>
+            <div class="text-muted mt-1" style="font-size: 0.74rem;">
+              Try an IMEI, phone model, SKU, customer phone, or invoice # (e.g. INV-000001).
+            </div>
+          </div>
+
+          <div *ngIf="!isSearching && allResults.length > 0" class="py-1">
+            <!-- 1. Mobile Phones -->
+            <ng-container *ngIf="searchResults?.phones?.length">
+              <div class="popover-section-label px-3 py-1 d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-phone me-1 text-primary"></i> Mobile Phones</span>
+                <span class="badge bg-primary-subtle text-primary">{{ searchResults?.phones?.length }}</span>
+              </div>
+              <div
+                *ngFor="let ph of searchResults?.phones"
+                class="command-row px-3 py-2 d-flex align-items-center justify-content-between"
+                [class.active]="isItemActive(ph)"
+                (click)="selectResult(ph)"
+              >
+                <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
+                  <div class="command-row-icon"><i class="bi bi-phone"></i></div>
+                  <div class="overflow-hidden">
+                    <div class="fw-semibold text-truncate small lh-sm">{{ ph.title }}</div>
+                    <div class="text-muted font-monospace text-truncate" style="font-size: 0.72rem;">{{ ph.subtitle }}</div>
+                  </div>
+                </div>
+                <div class="text-end flex-shrink-0">
+                  <span class="badge" [ngClass]="'bg-' + (ph.badgeTone || 'secondary') + '-subtle text-' + (ph.badgeTone || 'secondary')" style="font-size: 0.65rem;">
+                    {{ ph.badge }}
+                  </span>
+                  <div *ngIf="ph.price !== undefined" class="fw-bold font-monospace small mt-1">
+                    ${{ ph.price | number:'1.2-2' }}
+                  </div>
+                </div>
+              </div>
+            </ng-container>
+
+            <!-- 2. Accessories -->
+            <ng-container *ngIf="searchResults?.accessories?.length">
+              <div class="popover-section-label px-3 py-1 d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-headphones me-1 text-info"></i> Accessories</span>
+                <span class="badge bg-info-subtle text-info">{{ searchResults?.accessories?.length }}</span>
+              </div>
+              <div
+                *ngFor="let acc of searchResults?.accessories"
+                class="command-row px-3 py-2 d-flex align-items-center justify-content-between"
+                [class.active]="isItemActive(acc)"
+                (click)="selectResult(acc)"
+              >
+                <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
+                  <div class="command-row-icon"><i class="bi bi-headphones"></i></div>
+                  <div class="overflow-hidden">
+                    <div class="fw-semibold text-truncate small lh-sm">{{ acc.title }}</div>
+                    <div class="text-muted font-monospace text-truncate" style="font-size: 0.72rem;">{{ acc.subtitle }}</div>
+                  </div>
+                </div>
+                <div class="text-end flex-shrink-0">
+                  <span class="badge" [ngClass]="'bg-' + (acc.badgeTone || 'secondary') + '-subtle text-' + (acc.badgeTone || 'secondary')" style="font-size: 0.65rem;">
+                    {{ acc.badge }}
+                  </span>
+                  <div *ngIf="acc.price !== undefined" class="fw-bold font-monospace small mt-1">
+                    ${{ acc.price | number:'1.2-2' }}
+                  </div>
+                </div>
+              </div>
+            </ng-container>
+
+            <!-- 3. Customers -->
+            <ng-container *ngIf="searchResults?.customers?.length">
+              <div class="popover-section-label px-3 py-1 d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-people me-1 text-success"></i> Customers</span>
+                <span class="badge bg-success-subtle text-success">{{ searchResults?.customers?.length }}</span>
+              </div>
+              <div
+                *ngFor="let c of searchResults?.customers"
+                class="command-row px-3 py-2 d-flex align-items-center justify-content-between"
+                [class.active]="isItemActive(c)"
+                (click)="selectResult(c)"
+              >
+                <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
+                  <div class="command-row-icon"><i class="bi bi-person-circle"></i></div>
+                  <div class="overflow-hidden">
+                    <div class="fw-semibold text-truncate small lh-sm">{{ c.title }}</div>
+                    <div class="text-muted text-truncate" style="font-size: 0.72rem;">{{ c.subtitle }}</div>
+                  </div>
+                </div>
+                <span class="badge bg-light text-secondary border flex-shrink-0" style="font-size: 0.65rem;">{{ c.badge }}</span>
+              </div>
+            </ng-container>
+
+            <!-- 4. Sales & Invoices -->
+            <ng-container *ngIf="searchResults?.sales?.length">
+              <div class="popover-section-label px-3 py-1 d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-receipt me-1 text-warning"></i> Invoices &amp; Sales</span>
+                <span class="badge bg-warning-subtle text-warning">{{ searchResults?.sales?.length }}</span>
+              </div>
+              <div
+                *ngFor="let s of searchResults?.sales"
+                class="command-row px-3 py-2 d-flex align-items-center justify-content-between"
+                [class.active]="isItemActive(s)"
+                (click)="selectResult(s)"
+              >
+                <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
+                  <div class="command-row-icon"><i class="bi bi-receipt"></i></div>
+                  <div class="overflow-hidden">
+                    <div class="fw-semibold font-monospace text-truncate small lh-sm">{{ s.title }}</div>
+                    <div class="text-muted text-truncate" style="font-size: 0.72rem;">{{ s.subtitle }}</div>
+                  </div>
+                </div>
+                <div class="text-end flex-shrink-0">
+                  <span class="badge" [ngClass]="'bg-' + (s.badgeTone || 'secondary') + '-subtle text-' + (s.badgeTone || 'secondary')" style="font-size: 0.65rem;">
+                    {{ s.badge }}
+                  </span>
+                  <div *ngIf="s.price !== undefined" class="fw-bold font-monospace small mt-1">
+                    ${{ s.price | number:'1.2-2' }}
+                  </div>
+                </div>
+              </div>
+            </ng-container>
+
+            <!-- 5. Suppliers -->
+            <ng-container *ngIf="searchResults?.suppliers?.length">
+              <div class="popover-section-label px-3 py-1 d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-truck me-1"></i> Suppliers</span>
+                <span class="badge bg-secondary-subtle text-secondary">{{ searchResults?.suppliers?.length }}</span>
+              </div>
+              <div
+                *ngFor="let sup of searchResults?.suppliers"
+                class="command-row px-3 py-2 d-flex align-items-center justify-content-between"
+                [class.active]="isItemActive(sup)"
+                (click)="selectResult(sup)"
+              >
+                <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
+                  <div class="command-row-icon"><i class="bi bi-building"></i></div>
+                  <div class="overflow-hidden">
+                    <div class="fw-semibold text-truncate small lh-sm">{{ sup.title }}</div>
+                    <div class="text-muted text-truncate" style="font-size: 0.72rem;">{{ sup.subtitle }}</div>
+                  </div>
+                </div>
+                <span class="badge bg-light text-secondary border flex-shrink-0" style="font-size: 0.65rem;">{{ sup.badge }}</span>
+              </div>
+            </ng-container>
+          </div>
+        </ng-container>
+
+        <!-- Popover Keyboard Navigation Footer -->
+        <div class="popover-footer px-3 py-2 d-flex align-items-center justify-content-between text-muted">
+          <div class="d-flex align-items-center gap-2">
+            <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+            <span><kbd>↵</kbd> open</span>
+            <span><kbd>esc</kbd> close</span>
+          </div>
+          <span *ngIf="searchQuery">{{ allResults.length }} match(es)</span>
+          <span *ngIf="!searchQuery">{{ quickCommands.length }} shortcuts</span>
+        </div>
       </div>
     </div>
 
-    <!-- Right Section: Quick Action, Status, Notifications & Profile -->
-    <div class="d-flex align-items-center gap-2 gap-sm-3">
-      <!-- Quick POS Sale CTA -->
+    <!-- Right Section: Theme Switcher, Live Alerts/Approvals Bell & User Profile -->
+    <div class="d-flex align-items-center gap-2">
+      <!-- Theme Switcher -->
       <button
         type="button"
-        class="btn-app btn-app-primary btn-app-sm shadow-xs d-none d-sm-inline-flex align-items-center gap-2"
-        (click)="goToPos()"
+        class="btn-icon"
+        (click)="toggleTheme()"
+        [title]="theme.isDark ? 'Switch to Light Workspace' : 'Switch to Obsidian Dark Workspace'"
+        aria-label="Toggle color theme"
       >
-        <i class="bi bi-receipt-cutoff" aria-hidden="true"></i>
-        <span>New Sale / POS</span>
+        <i class="bi" [ngClass]="theme.isDark ? 'bi-sun-fill text-warning' : 'bi-moon-stars-fill'" aria-hidden="true"></i>
       </button>
 
-      <!-- System Connectivity Badge (from Step 1) -->
-      <app-status-badge
-        [label]="connectionLabel"
-        [tone]="connectionTone"
-        class="d-none d-md-inline-block"
-      ></app-status-badge>
-
-      <!-- Notifications Bell -->
-      <div class="position-relative">
+      <!-- Live Notifications & Approvals Bell -->
+      <div #notificationsContainer class="position-relative">
         <button
           type="button"
           class="btn-icon position-relative"
-          (click)="showNotifications = !showNotifications; showProfileMenu = false"
-          aria-label="View notifications"
+          (click)="toggleNotifications()"
+          aria-label="View live alerts and approvals"
           [attr.aria-expanded]="showNotifications"
+          [title]="alertsState.totalCount > 0 ? alertsState.totalCount + ' active alerts & approvals' : 'All caught up'"
         >
-          <i class="bi bi-bell fs-5 text-secondary" aria-hidden="true"></i>
-          <span class="notification-badge-dot"></span>
+          <i class="bi bi-bell fs-6" aria-hidden="true"></i>
+          <span *ngIf="alertsState.totalCount > 0" class="notif-count-badge">
+            {{ alertsState.totalCount > 9 ? '9+' : alertsState.totalCount }}
+          </span>
         </button>
 
-        <!-- Notifications Dropdown -->
-        <div *ngIf="showNotifications" class="custom-dropdown shadow-lg border rounded bg-white position-absolute end-0 mt-2" style="inline-size: 320px; z-index: 1050;">
-          <div class="p-3 border-bottom d-flex align-items-center justify-content-between">
-            <span class="fw-bold small text-dark">Notifications (3)</span>
-            <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.7rem;">Live</span>
+        <!-- Live Alerts & Inline Approvals Dropdown -->
+        <div *ngIf="showNotifications" class="custom-dropdown alerts-dropdown shadow-lg position-absolute end-0 mt-2">
+          <div class="alerts-header px-3 py-2 d-flex align-items-center justify-content-between">
+            <div>
+              <div class="fw-bold small d-flex align-items-center gap-2">
+                <span>Action Center</span>
+                <span *ngIf="pendingApprovalsCount > 0" class="badge bg-warning-subtle text-warning border">
+                  {{ pendingApprovalsCount }} Approval{{ pendingApprovalsCount === 1 ? '' : 's' }}
+                </span>
+              </div>
+              <div class="text-muted" style="font-size: 0.68rem;">
+                Live approvals &amp; inventory alerts
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn btn-sm btn-link text-muted p-1"
+              (click)="refreshAlerts($event)"
+              [disabled]="alertsState.loading"
+              title="Refresh live alerts"
+            >
+              <i class="bi bi-arrow-clockwise" [class.spin-icon]="alertsState.loading"></i>
+            </button>
           </div>
-          <div class="notification-list p-1" style="max-block-size: 260px; overflow-y: auto;">
-            <div *ngFor="let n of notifications" class="p-2 rounded border-bottom-subtle hover-bg-subtle d-flex align-items-start gap-2">
-              <i class="bi mt-1" [ngClass]="n.icon"></i>
-              <div class="flex-grow-1">
-                <div class="fw-semibold small text-dark lh-1 mb-1">{{ n.title }}</div>
-                <div class="text-secondary small lh-sm" style="font-size: 0.75rem;">{{ n.text }}</div>
-                <span class="text-muted" style="font-size: 0.6875rem;">{{ n.time }}</span>
+
+          <div class="alerts-body p-2">
+            <div *ngIf="alertsState.loading && alertsState.alerts.length === 0" class="p-4 text-center text-muted small">
+              <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+              Checking pending approvals &amp; stock thresholds...
+            </div>
+
+            <div *ngIf="!alertsState.loading && alertsState.alerts.length === 0" class="p-4 text-center">
+              <div class="empty-check-circle mx-auto mb-2">
+                <i class="bi bi-check2-all fs-4 text-success"></i>
+              </div>
+              <div class="fw-semibold small">All Operations Healthy</div>
+              <div class="text-muted" style="font-size: 0.74rem;">
+                No pending discount/credit approvals or low-stock warnings.
+              </div>
+            </div>
+
+            <div
+              *ngFor="let alert of alertsState.alerts"
+              class="alert-row p-2 rounded-3 mb-1"
+              (click)="openAlertTarget(alert)"
+            >
+              <div class="d-flex align-items-start gap-2">
+                <div class="alert-row-icon flex-shrink-0" [ngClass]="'tone-' + alert.tone">
+                  <i class="bi" [ngClass]="alert.icon"></i>
+                </div>
+                <div class="flex-grow-1 overflow-hidden">
+                  <div class="d-flex align-items-center justify-content-between gap-2">
+                    <span class="fw-semibold small text-truncate">{{ alert.title }}</span>
+                    <span class="badge font-monospace flex-shrink-0" [ngClass]="'bg-' + alert.tone + '-subtle text-' + alert.tone" style="font-size: 0.65rem;">
+                      {{ alert.meta }}
+                    </span>
+                  </div>
+                  <div class="text-muted mt-1 lh-sm" style="font-size: 0.74rem;">{{ alert.detail }}</div>
+
+                  <!-- Inline Admin Actions for Pending Discount Requests -->
+                  <div
+                    *ngIf="auth.isAdmin() && alert.kind === 'DISCOUNT'"
+                    class="d-flex align-items-center gap-2 mt-2"
+                  >
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-success py-0 px-2"
+                      style="font-size: 0.72rem;"
+                      [disabled]="reviewingId === alert.id"
+                      (click)="reviewDiscount(alert, 'APPROVE', $event)"
+                    >
+                      <i class="bi bi-check-lg me-1"></i>Approve
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-danger py-0 px-2"
+                      style="font-size: 0.72rem;"
+                      [disabled]="reviewingId === alert.id"
+                      (click)="reviewDiscount(alert, 'REJECT', $event)"
+                    >
+                      Reject
+                    </button>
+                  </div>
+
+                  <!-- Inline Admin Actions for Pending Credit Overrides -->
+                  <div
+                    *ngIf="auth.isAdmin() && alert.kind === 'CREDIT_OVERRIDE'"
+                    class="d-flex align-items-center gap-2 mt-2"
+                  >
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-success py-0 px-2"
+                      style="font-size: 0.72rem;"
+                      [disabled]="reviewingId === alert.id"
+                      (click)="reviewCreditOverride(alert, 'APPROVE', $event)"
+                    >
+                      <i class="bi bi-check-lg me-1"></i>Authorize
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-danger py-0 px-2"
+                      style="font-size: 0.72rem;"
+                      [disabled]="reviewingId === alert.id"
+                      (click)="reviewCreditOverride(alert, 'REJECT', $event)"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -98,19 +428,19 @@
       </div>
 
       <!-- User Profile Menu -->
-      <div class="position-relative">
+      <div #profileContainer class="position-relative">
         <button
           type="button"
-          class="user-profile-btn d-flex align-items-center gap-2 border-0 bg-transparent p-1 rounded"
-          (click)="showProfileMenu = !showProfileMenu; showNotifications = false"
+          class="user-profile-btn d-flex align-items-center gap-2"
+          (click)="showProfileMenu = !showProfileMenu; showNotifications = false; showSearchDropdown = false"
           [attr.aria-expanded]="showProfileMenu"
         >
-          <div class="avatar-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center">
+          <div class="avatar-circle fw-bold d-flex align-items-center justify-content-center">
             {{ userInitials }}
           </div>
-          <div class="text-start d-none d-xl-block">
-            <span class="d-block fw-semibold text-dark small lh-1">{{ auth.currentUser?.name || 'User' }}</span>
-            <small class="text-secondary" style="font-size: 0.6875rem;">
+          <div class="text-start d-none d-xl-block lh-1">
+            <span class="d-block fw-semibold small">{{ auth.currentUser?.name || 'User' }}</span>
+            <small class="text-muted" style="font-size: 0.68rem;">
               {{ auth.currentUser?.role === 'SHOP_ADMIN' ? 'Shop Admin' : 'Shopkeeper' }}
             </small>
           </div>
@@ -118,26 +448,34 @@
         </button>
 
         <!-- Profile Dropdown Menu -->
-        <div *ngIf="showProfileMenu" class="custom-dropdown shadow-lg border rounded p-1 bg-white position-absolute end-0 mt-2" style="inline-size: 220px; z-index: 1050;">
+        <div *ngIf="showProfileMenu" class="custom-dropdown profile-dropdown shadow-lg position-absolute end-0 mt-2">
           <div class="px-3 py-2 border-bottom">
-            <div class="fw-bold small text-dark">{{ auth.currentUser?.name }}</div>
-            <div class="text-muted text-truncate" style="font-size: 0.75rem;">{{ auth.currentUser?.email }}</div>
-            <div class="mt-1 d-flex align-items-center gap-1">
-              <span class="badge" [class.bg-primary-subtle]="auth.currentUser?.role === 'SHOP_ADMIN'" [class.text-primary]="auth.currentUser?.role === 'SHOP_ADMIN'" [class.bg-info-subtle]="auth.currentUser?.role === 'SHOPKEEPER'" [class.text-info]="auth.currentUser?.role === 'SHOPKEEPER'" style="font-size: 0.65rem;">
+            <div class="fw-bold small">{{ auth.currentUser?.name }}</div>
+            <div class="text-muted text-truncate" style="font-size: 0.74rem;">{{ auth.currentUser?.email }}</div>
+            <div class="mt-2 d-flex align-items-center gap-1 flex-wrap">
+              <span
+                class="badge"
+                [ngClass]="auth.currentUser?.role === 'SHOP_ADMIN' ? 'bg-primary-subtle text-primary' : 'bg-info-subtle text-info'"
+                style="font-size: 0.66rem;"
+              >
                 {{ auth.currentUser?.role === 'SHOP_ADMIN' ? 'Full Administrator' : 'Shopkeeper' }}
+              </span>
+              <span class="badge bg-secondary-subtle text-secondary font-monospace" style="font-size: 0.64rem;">
+                {{ currentShopName }}
               </span>
             </div>
           </div>
-          <div class="py-1">
-            <a routerLink="/settings" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 text-decoration-none text-dark" (click)="showProfileMenu = false">
-              <i class="bi bi-gear" aria-hidden="true"></i> Store Profile &amp; Settings
+          <div class="p-1">
+            <a routerLink="/settings" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 text-decoration-none" (click)="showProfileMenu = false">
+              <i class="bi bi-sliders2" aria-hidden="true"></i> Store Profile &amp; Tax Settings
             </a>
-            <a *ngIf="auth.isAdmin()" routerLink="/users" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 text-decoration-none text-dark" (click)="showProfileMenu = false">
-              <i class="bi bi-people" aria-hidden="true"></i> Staff Management
+            <a *ngIf="auth.isAdmin()" routerLink="/users" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 text-decoration-none" (click)="showProfileMenu = false">
+              <i class="bi bi-people" aria-hidden="true"></i> Staff &amp; Permissions
             </a>
-            <a routerLink="/system" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 text-decoration-none text-dark" (click)="showProfileMenu = false">
-              <i class="bi bi-hdd-network" aria-hidden="true"></i> System Health &amp; API
-            </a>
+            <button type="button" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 border-0 bg-transparent w-100 text-start" (click)="toggleTheme()">
+              <i class="bi" [ngClass]="theme.isDark ? 'bi-sun' : 'bi-moon-stars'" aria-hidden="true"></i>
+              {{ theme.isDark ? 'Switch to Light Mode' : 'Switch to Obsidian Dark' }}
+            </button>
             <div class="dropdown-divider my-1"></div>
             <button type="button" class="dropdown-item px-3 py-2 small d-flex align-items-center gap-2 text-danger border-0 bg-transparent w-100 text-start" (click)="logout()">
               <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Sign Out

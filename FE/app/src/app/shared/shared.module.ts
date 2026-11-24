@@ -8,6 +8,9 @@ import { StatusBadgeComponent } from './components/status-badge/status-badge.com
 import { ToastContainerComponent } from './components/toast/toast-container.component';
 import { ConfirmDialogComponent } from './components/confirm-dialog/confirm-dialog.component';
 import { DeviceDetailDrawerComponent } from './components/device-detail-drawer/device-detail-drawer.component';
+import { CnicMaskDirective } from './directives/cnic-mask.directive';
+import { PhoneMaskDirective } from './directives/phone-mask.directive';
+import { NumberOnlyDirective } from './directives/number-input.directive';
 
 @NgModule({
   declarations: [
@@ -17,6 +20,9 @@ import { DeviceDetailDrawerComponent } from './components/device-detail-drawer/d
     ToastContainerComponent,
     ConfirmDialogComponent,
     DeviceDetailDrawerComponent,
+    CnicMaskDirective,
+    PhoneMaskDirective,
+    NumberOnlyDirective,
   ],
   imports: [
     CommonModule,
@@ -35,6 +41,9 @@ import { DeviceDetailDrawerComponent } from './components/device-detail-drawer/d
     ToastContainerComponent,
     ConfirmDialogComponent,
     DeviceDetailDrawerComponent,
+    CnicMaskDirective,
+    PhoneMaskDirective,
+    NumberOnlyDirective,
   ],
 })
 export class SharedModule {}

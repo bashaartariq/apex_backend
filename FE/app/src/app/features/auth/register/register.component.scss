@@ -1,58 +1,129 @@
-.auth-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--bg-canvas, #f8fafc);
-  padding: 2.5rem 1rem;
-}
+.auth-split-shell {
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  display: grid;
+  grid-template-columns: 1fr;
+  background-color: var(--ms-bg-app);
 
-.auth-container {
-  width: 100%;
-  max-width: 640px;
-}
-
-.brand-badge {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background-color: #ffffff;
-  border: 1px solid var(--border-subtle, #e2e8f0);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-}
-
-.auth-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  color: var(--text-primary, #0f172a);
-  margin-bottom: 0.25rem;
-}
-
-.auth-subtitle {
-  font-size: 0.875rem;
-  color: var(--text-secondary, #64748b);
-  margin-bottom: 0;
-}
-
-.auth-card {
-  background-color: #ffffff;
-  border-radius: 12px;
-  border-color: var(--border-subtle, #e2e8f0) !important;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025) !important;
-}
-
-.form-control {
-  border-color: var(--border-subtle, #cbd5e1);
-  font-size: 0.875rem;
-  padding: 0.6rem 0.75rem;
-
-  &:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  @media (min-width: 992px) {
+    grid-template-columns: minmax(420px, 0.92fr) minmax(500px, 1.08fr);
   }
 }
 
-.input-group-text {
-  border-color: var(--border-subtle, #cbd5e1);
+.auth-showcase {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(600px circle at 15% 12%, rgba(79, 70, 229, 0.28), transparent 60%),
+    radial-gradient(500px circle at 85% 85%, rgba(16, 185, 129, 0.14), transparent 55%),
+    linear-gradient(180deg, #090e1a 0%, #0b1326 100%);
+  border-inline-end: 1px solid rgba(148, 163, 184, 0.14);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+    background-size: 38px 38px;
+    pointer-events: none;
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.showcase-mark {
+  inline-size: 46px;
+  block-size: 46px;
+  border-radius: 13px;
+  background: var(--ms-brand-gradient);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 24px rgba(79, 70, 229, 0.42);
+}
+
+.showcase-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(129, 140, 248, 0.28);
+  padding: 0.28rem 0.75rem;
+  border-radius: 999px;
+}
+
+.showcase-headline {
+  font-family: var(--ms-font-display);
+  font-size: clamp(1.85rem, 2.6vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.showcase-copy {
+  color: #94a3b8;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.onboarding-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.step-num {
+  font-family: var(--ms-font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  padding: 0.25rem 0.5rem;
+  border-radius: 7px;
+  flex-shrink: 0;
+}
+
+.pillar-sub {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  margin-top: 0.15rem;
+}
+
+.text-emerald { color: #34d399; }
+
+.auth-form-stage {
+  background-color: var(--ms-bg-surface);
+}
+
+.auth-container {
+  inline-size: 100%;
+  max-inline-size: 560px;
+}
+
+.strength-bar {
+  flex: 1;
+  block-size: 4px;
+  border-radius: 99px;
+  background-color: var(--ms-bg-muted);
+  transition: background-color 0.2s ease;
+
+  &.filled.weak { background-color: var(--ms-danger); }
+  &.filled.fair { background-color: var(--ms-warning); }
+  &.filled.good { background-color: var(--ms-info); }
+  &.filled.strong { background-color: var(--ms-success); }
 }

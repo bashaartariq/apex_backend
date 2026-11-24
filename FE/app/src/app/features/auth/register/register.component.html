@@ -1,194 +1,240 @@
-<div class="auth-page">
-  <div class="auth-container">
-    <!-- Brand Header -->
-    <div class="auth-header text-center mb-4">
-      <div class="brand-badge d-inline-flex align-items-center justify-content-center mb-3">
-        <i class="bi bi-shop text-primary fs-3"></i>
+<div class="auth-split-shell">
+  <!-- LEFT ONBOARDING SHOWCASE -->
+  <section class="auth-showcase d-none d-lg-flex flex-column justify-content-between p-5" aria-label="Tenant onboarding overview">
+    <div class="d-flex align-items-center gap-3">
+      <div class="showcase-mark">
+        <i class="bi bi-shop-window fs-4"></i>
       </div>
-      <h1 class="auth-title">Register Your Mobile Shop</h1>
-      <p class="auth-subtitle">Create your independent multi-tenant store account</p>
-    </div>
-
-    <!-- Main Card -->
-    <div class="card auth-card shadow-sm border">
-      <div class="card-body p-4 p-md-5">
-        <div class="mb-4">
-          <h2 class="h5 fw-bold mb-1 text-dark">Tenant Onboarding</h2>
-          <p class="text-secondary small mb-0">Fill in your shop profile to initialize your dedicated workspace.</p>
-        </div>
-
-        <!-- Error Alert -->
-        <div *ngIf="errorMessage" class="alert alert-danger d-flex align-items-center py-2 px-3 small mb-3" role="alert">
-          <i class="bi bi-exclamation-circle-fill me-2 fs-6"></i>
-          <div>{{ errorMessage }}</div>
-        </div>
-
-        <!-- Form -->
-        <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate>
-          <div class="row g-3">
-            <!-- Shop Name -->
-            <div class="col-12 col-md-6">
-              <label for="reg-shopName" class="form-label small fw-semibold text-secondary">Shop / Business Name</label>
-              <input
-                id="reg-shopName"
-                type="text"
-                class="form-control"
-                [class.is-invalid]="registerForm.get('shopName')?.touched && registerForm.get('shopName')?.invalid"
-                formControlName="shopName"
-                placeholder="e.g. Apex Cellular & Tech"
-              />
-              <div *ngIf="registerForm.get('shopName')?.touched && registerForm.get('shopName')?.invalid" class="text-danger small mt-1">
-                Shop name is required.
-              </div>
-            </div>
-
-            <!-- Owner Full Name -->
-            <div class="col-12 col-md-6">
-              <label for="reg-ownerName" class="form-label small fw-semibold text-secondary">Owner Full Name</label>
-              <input
-                id="reg-ownerName"
-                type="text"
-                class="form-control"
-                [class.is-invalid]="registerForm.get('ownerName')?.touched && registerForm.get('ownerName')?.invalid"
-                formControlName="ownerName"
-                placeholder="e.g. Tariq Malik"
-              />
-              <div *ngIf="registerForm.get('ownerName')?.touched && registerForm.get('ownerName')?.invalid" class="text-danger small mt-1">
-                Owner name is required.
-              </div>
-            </div>
-
-            <!-- Email -->
-            <div class="col-12 col-md-6">
-              <label for="reg-email" class="form-label small fw-semibold text-secondary">Business Email</label>
-              <input
-                id="reg-email"
-                type="email"
-                class="form-control"
-                [class.is-invalid]="registerForm.get('email')?.touched && registerForm.get('email')?.invalid"
-                formControlName="email"
-                placeholder="owner@shop.com"
-                autocomplete="email"
-              />
-              <div *ngIf="registerForm.get('email')?.touched && registerForm.get('email')?.invalid" class="text-danger small mt-1">
-                Valid email is required.
-              </div>
-            </div>
-
-            <!-- Phone -->
-            <div class="col-12 col-md-6">
-              <label for="reg-phone" class="form-label small fw-semibold text-secondary">Phone Number</label>
-              <input
-                id="reg-phone"
-                type="tel"
-                class="form-control"
-                [class.is-invalid]="registerForm.get('phone')?.touched && registerForm.get('phone')?.invalid"
-                formControlName="phone"
-                placeholder="+1 (555) 000-0000"
-              />
-              <div *ngIf="registerForm.get('phone')?.touched && registerForm.get('phone')?.invalid" class="text-danger small mt-1">
-                Phone number is required.
-              </div>
-            </div>
-
-            <!-- Address -->
-            <div class="col-12">
-              <label for="reg-address" class="form-label small fw-semibold text-secondary">Store Physical Address</label>
-              <input
-                id="reg-address"
-                type="text"
-                class="form-control"
-                [class.is-invalid]="registerForm.get('address')?.touched && registerForm.get('address')?.invalid"
-                formControlName="address"
-                placeholder="e.g. 742 Tech Boulevard, Suite 100, San Jose, CA"
-              />
-              <div *ngIf="registerForm.get('address')?.touched && registerForm.get('address')?.invalid" class="text-danger small mt-1">
-                Store address is required.
-              </div>
-            </div>
-
-            <!-- Password -->
-            <div class="col-12 col-md-6">
-              <label for="reg-password" class="form-label small fw-semibold text-secondary">Master Password</label>
-              <div class="input-group">
-                <input
-                  id="reg-password"
-                  [type]="showPassword ? 'text' : 'password'"
-                  class="form-control"
-                  [class.is-invalid]="registerForm.get('password')?.touched && registerForm.get('password')?.invalid"
-                  formControlName="password"
-                  placeholder="Min 8 chars, mixed case & digit"
-                  autocomplete="new-password"
-                />
-                <button
-                  type="button"
-                  class="btn btn-outline-light border border-start-0 text-secondary"
-                  (click)="togglePasswordVisibility()"
-                  tabindex="-1"
-                >
-                  <i class="bi" [class.bi-eye]="!showPassword" [class.bi-eye-slash]="showPassword"></i>
-                </button>
-              </div>
-              <div *ngIf="registerForm.get('password')?.touched && registerForm.get('password')?.invalid" class="text-danger small mt-1">
-                Must be at least 8 chars with uppercase, lowercase, and a number.
-              </div>
-            </div>
-
-            <!-- Confirm Password -->
-            <div class="col-12 col-md-6">
-              <label for="reg-confirmPassword" class="form-label small fw-semibold text-secondary">Confirm Password</label>
-              <div class="input-group">
-                <input
-                  id="reg-confirmPassword"
-                  [type]="showConfirmPassword ? 'text' : 'password'"
-                  class="form-control"
-                  [class.is-invalid]="(registerForm.get('confirmPassword')?.touched && registerForm.get('confirmPassword')?.invalid) || (registerForm.touched && registerForm.hasError('passwordMismatch'))"
-                  formControlName="confirmPassword"
-                  placeholder="Re-enter password"
-                  autocomplete="new-password"
-                />
-                <button
-                  type="button"
-                  class="btn btn-outline-light border border-start-0 text-secondary"
-                  (click)="toggleConfirmPasswordVisibility()"
-                  tabindex="-1"
-                >
-                  <i class="bi" [class.bi-eye]="!showConfirmPassword" [class.bi-eye-slash]="showConfirmPassword"></i>
-                </button>
-              </div>
-              <div *ngIf="registerForm.touched && registerForm.hasError('passwordMismatch')" class="text-danger small mt-1">
-                Passwords do not match.
-              </div>
-            </div>
-          </div>
-
-          <!-- Role assignment notice -->
-          <div class="alert alert-light border d-flex align-items-center py-2 px-3 small mt-3 mb-4">
-            <i class="bi bi-shield-check text-primary me-2 fs-5"></i>
-            <div>
-              You will be designated as the <strong>Shop Administrator (SHOP_ADMIN)</strong> with complete tenant authority.
-            </div>
-          </div>
-
-          <!-- Submit Button -->
-          <button
-            type="submit"
-            class="btn btn-primary w-100 py-2 fw-semibold d-flex align-items-center justify-content-center"
-            [disabled]="submitting"
-          >
-            <span *ngIf="submitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-            <span>{{ submitting ? 'Creating Tenant Account...' : 'Complete Registration' }}</span>
-          </button>
-        </form>
-
-        <!-- Footer Link -->
-        <div class="text-center mt-4 pt-2">
-          <p class="text-secondary small mb-0">
-            Already have an active shop?
-            <a routerLink="/login" class="text-primary fw-semibold text-decoration-none ms-1">Sign in here</a>
-          </p>
+      <div>
+        <div class="fw-bold text-white fs-5 lh-1" style="letter-spacing: -0.02em;">ApexCellular</div>
+        <div class="text-uppercase fw-semibold mt-1" style="font-size: 0.65rem; letter-spacing: 0.12em; color: #818cf8;">
+          Tenant Provisioning
         </div>
       </div>
     </div>
-  </div>
+
+    <div class="my-auto py-4">
+      <div class="showcase-eyebrow mb-3">
+        <i class="bi bi-rocket-takeoff-fill me-1"></i> Ready in 60 Seconds
+      </div>
+      <h1 class="showcase-headline text-white mb-3">
+        Launch your dedicated mobile store tenant.
+      </h1>
+      <p class="showcase-copy mb-4">
+        Every newly registered shop gets isolated database boundaries, automatic invoice/receipt numbering, FIFO batch tracking, and full RBAC staff controls.
+      </p>
+
+      <div class="d-flex flex-column gap-3">
+        <div class="onboarding-step">
+          <div class="step-num">01</div>
+          <div>
+            <div class="fw-semibold text-white small">Isolated Tenant Ledger</div>
+            <div class="pillar-sub">Strict <code>shop_id</code> enforcement across all 36 retail tables.</div>
+          </div>
+        </div>
+        <div class="onboarding-step">
+          <div class="step-num">02</div>
+          <div>
+            <div class="fw-semibold text-white small">Full Administrator Authority</div>
+            <div class="pillar-sub">Manage staff shopkeepers, tax rules, margins &amp; approvals.</div>
+          </div>
+        </div>
+        <div class="onboarding-step">
+          <div class="step-num">03</div>
+          <div>
+            <div class="fw-semibold text-white small">Instant POS &amp; PDF Engine</div>
+            <div class="pillar-sub">Generate barcode labels, thermal invoices &amp; A4 financial PDFs.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="small" style="color: #94a3b8;">
+      <i class="bi bi-shield-check text-emerald me-1"></i> Zero cross-tenant data leakage guaranteed at query layer.
+    </div>
+  </section>
+
+  <!-- RIGHT REGISTRATION FORM -->
+  <section class="auth-form-stage d-flex flex-column justify-content-center align-items-center p-4 p-md-5">
+    <div class="auth-container">
+      <div class="mb-4">
+        <span class="badge bg-primary-subtle text-primary border mb-2 px-2 py-1">New Store Onboarding</span>
+        <h2 class="h3 fw-bold mb-1">Register your mobile shop</h2>
+        <p class="text-muted small mb-0">Initialize your isolated workspace and Shop Administrator credentials.</p>
+      </div>
+
+      <div *ngIf="errorMessage" class="alert alert-danger d-flex align-items-center py-2 px-3 small mb-3" role="alert">
+        <i class="bi bi-exclamation-circle-fill me-2 fs-6"></i>
+        <div>{{ errorMessage }}</div>
+      </div>
+
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate>
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <label for="reg-shopName" class="form-label small fw-semibold">Shop / Business Name *</label>
+            <input
+              id="reg-shopName"
+              type="text"
+              class="form-control"
+              [class.is-invalid]="registerForm.get('shopName')?.touched && registerForm.get('shopName')?.invalid"
+              formControlName="shopName"
+              placeholder="e.g. Apex Cellular & Tech"
+            />
+            <div *ngIf="registerForm.get('shopName')?.touched && registerForm.get('shopName')?.invalid" class="text-danger small mt-1">
+              Shop name is required.
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label for="reg-ownerName" class="form-label small fw-semibold">Owner Full Name *</label>
+            <input
+              id="reg-ownerName"
+              type="text"
+              class="form-control"
+              [class.is-invalid]="registerForm.get('ownerName')?.touched && registerForm.get('ownerName')?.invalid"
+              formControlName="ownerName"
+              placeholder="e.g. Tariq Malik"
+            />
+            <div *ngIf="registerForm.get('ownerName')?.touched && registerForm.get('ownerName')?.invalid" class="text-danger small mt-1">
+              Owner name is required.
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label for="reg-email" class="form-label small fw-semibold">Business Email *</label>
+            <input
+              id="reg-email"
+              type="email"
+              class="form-control"
+              [class.is-invalid]="registerForm.get('email')?.touched && registerForm.get('email')?.invalid"
+              formControlName="email"
+              placeholder="owner@shop.com"
+              autocomplete="email"
+            />
+            <div *ngIf="registerForm.get('email')?.touched && registerForm.get('email')?.invalid" class="text-danger small mt-1">
+              Valid email is required.
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label for="reg-phone" class="form-label small fw-semibold">Phone Number *</label>
+            <input
+              id="reg-phone"
+              type="tel"
+              class="form-control"
+              [class.is-invalid]="registerForm.get('phone')?.touched && registerForm.get('phone')?.invalid"
+              formControlName="phone"
+              placeholder="0300-1234567"
+            />
+            <div *ngIf="registerForm.get('phone')?.touched && registerForm.get('phone')?.invalid" class="text-danger small mt-1">
+              Phone number is required.
+            </div>
+          </div>
+
+          <div class="col-12">
+            <label for="reg-address" class="form-label small fw-semibold">Store Physical Address *</label>
+            <input
+              id="reg-address"
+              type="text"
+              class="form-control"
+              [class.is-invalid]="registerForm.get('address')?.touched && registerForm.get('address')?.invalid"
+              formControlName="address"
+              placeholder="e.g. 742 Tech Boulevard, Suite 100"
+            />
+            <div *ngIf="registerForm.get('address')?.touched && registerForm.get('address')?.invalid" class="text-danger small mt-1">
+              Store address is required.
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label for="reg-password" class="form-label small fw-semibold">Master Password *</label>
+            <div class="input-group">
+              <input
+                id="reg-password"
+                [type]="showPassword ? 'text' : 'password'"
+                class="form-control border-end-0"
+                [class.is-invalid]="registerForm.get('password')?.touched && registerForm.get('password')?.invalid"
+                formControlName="password"
+                placeholder="Min 8 chars, Aa + 0-9"
+                autocomplete="new-password"
+              />
+              <button
+                type="button"
+                class="btn btn-outline-secondary border-start-0"
+                (click)="togglePasswordVisibility()"
+                tabindex="-1"
+                aria-label="Toggle master password visibility"
+              >
+                <i class="bi" [class.bi-eye]="!showPassword" [class.bi-eye-slash]="showPassword"></i>
+              </button>
+            </div>
+            <!-- Live Password Strength Meter -->
+            <div class="strength-meter mt-2" *ngIf="registerForm.get('password')?.value">
+              <div class="d-flex gap-1 mb-1">
+                <span class="strength-bar" [class.filled]="passwordStrengthScore >= 1" [ngClass]="passwordStrengthClass"></span>
+                <span class="strength-bar" [class.filled]="passwordStrengthScore >= 2" [ngClass]="passwordStrengthClass"></span>
+                <span class="strength-bar" [class.filled]="passwordStrengthScore >= 3" [ngClass]="passwordStrengthClass"></span>
+                <span class="strength-bar" [class.filled]="passwordStrengthScore >= 4" [ngClass]="passwordStrengthClass"></span>
+              </div>
+              <small class="text-muted" style="font-size: 0.7rem;">Strength: <strong>{{ passwordStrengthLabel }}</strong></small>
+            </div>
+            <div *ngIf="registerForm.get('password')?.touched && registerForm.get('password')?.invalid" class="text-danger small mt-1">
+              Must be 8+ chars with uppercase, lowercase, and a number.
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label for="reg-confirmPassword" class="form-label small fw-semibold">Confirm Password *</label>
+            <div class="input-group">
+              <input
+                id="reg-confirmPassword"
+                [type]="showConfirmPassword ? 'text' : 'password'"
+                class="form-control border-end-0"
+                [class.is-invalid]="(registerForm.get('confirmPassword')?.touched && registerForm.get('confirmPassword')?.invalid) || (registerForm.touched && registerForm.hasError('passwordMismatch'))"
+                formControlName="confirmPassword"
+                placeholder="Re-enter password"
+                autocomplete="new-password"
+              />
+              <button
+                type="button"
+                class="btn btn-outline-secondary border-start-0"
+                (click)="toggleConfirmPasswordVisibility()"
+                tabindex="-1"
+                aria-label="Toggle confirm password visibility"
+              >
+                <i class="bi" [class.bi-eye]="!showConfirmPassword" [class.bi-eye-slash]="showConfirmPassword"></i>
+              </button>
+            </div>
+            <div *ngIf="registerForm.touched && registerForm.hasError('passwordMismatch')" class="text-danger small mt-1">
+              Passwords do not match.
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-3 bg-primary-subtle border mt-3 mb-4 d-flex align-items-center gap-2 small">
+          <i class="bi bi-shield-check text-primary fs-5 flex-shrink-0"></i>
+          <div>
+            Designated as <strong>Shop Administrator (SHOP_ADMIN)</strong> with full tenant privileges and RBAC control.
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn-primary w-100 py-2 fw-semibold d-flex align-items-center justify-content-center gap-2"
+          [disabled]="submitting"
+        >
+          <span *ngIf="submitting" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          <span>{{ submitting ? 'Provisioning Tenant...' : 'Create Store Workspace' }}</span>
+          <i *ngIf="!submitting" class="bi bi-arrow-right"></i>
+        </button>
+      </form>
+
+      <div class="text-center mt-4 pt-2">
+        <p class="text-muted small mb-0">
+          Already have an active shop?
+          <a routerLink="/login" class="text-primary fw-semibold text-decoration-none ms-1">Sign in here &rarr;</a>
+        </p>
+      </div>
+    </div>
+  </section>
 </div>

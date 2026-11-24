@@ -1,155 +1,219 @@
-<div class="auth-page">
-  <div class="auth-container">
-    <!-- Brand Header -->
-    <div class="auth-header text-center mb-4">
-      <div class="brand-badge d-inline-flex align-items-center justify-content-center mb-3">
-        <i class="bi bi-phone-fill text-primary fs-3"></i>
+<div class="auth-split-shell">
+  <!-- LEFT EDITORIAL SHOWCASE PANEL -->
+  <section class="auth-showcase d-none d-lg-flex flex-column justify-content-between p-5" aria-label="Platform capabilities">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-3">
+        <div class="showcase-mark">
+          <i class="bi bi-cpu-fill fs-4"></i>
+        </div>
+        <div>
+          <div class="fw-bold text-white fs-5 lh-1" style="letter-spacing: -0.02em;">ApexCellular</div>
+          <div class="text-uppercase fw-semibold mt-1" style="font-size: 0.65rem; letter-spacing: 0.12em; color: #818cf8;">
+            Enterprise Retail OS
+          </div>
+        </div>
       </div>
-      <h1 class="auth-title">ApexCellular POS</h1>
-      <p class="auth-subtitle">Mobile Phone Inventory & Multi-Tenant Management</p>
+      <span class="showcase-badge">
+        <span class="live-dot"></span> Multi-Tenant v2.0
+      </span>
     </div>
 
-    <!-- Main Card -->
-    <div class="card auth-card shadow-sm border">
-      <div class="card-body p-4 p-md-5">
+    <div class="my-auto py-4">
+      <div class="showcase-eyebrow mb-3">
+        <i class="bi bi-stars me-1"></i> Purpose-Built for Mobile Hardware Retail
+      </div>
+      <h1 class="showcase-headline text-white mb-3">
+        Precision IMEI inventory,<br />FIFO costing &amp; express POS.
+      </h1>
+      <p class="showcase-copy mb-4">
+        Every serialized handset, accessory cost batch, encrypted customer CNIC, and financial margin unified inside an isolated store ledger.
+      </p>
+
+      <div class="row g-3">
+        <div class="col-6">
+          <div class="pillar-card">
+            <i class="bi bi-upc-scan text-indigo mb-2 fs-5 d-block"></i>
+            <div class="fw-semibold text-white small">Dual-IMEI Serialization</div>
+            <div class="pillar-sub">Unit-level traceability from supplier PO to warranty claim.</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="pillar-card">
+            <i class="bi bi-layers-half text-emerald mb-2 fs-5 d-block"></i>
+            <div class="fw-semibold text-white small">Chronological FIFO</div>
+            <div class="pillar-sub">Lot-accurate COGS &amp; real-time net profit deductions.</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="pillar-card">
+            <i class="bi bi-shield-lock-fill text-sky mb-2 fs-5 d-block"></i>
+            <div class="fw-semibold text-white small">AES-256 CNIC Vault</div>
+            <div class="pillar-sub">Blind-indexed encryption with masked POS receipts.</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="pillar-card">
+            <i class="bi bi-diagram-3-fill text-amber mb-2 fs-5 d-block"></i>
+            <div class="fw-semibold text-white small">20-Point RBAC</div>
+            <div class="pillar-sub">Strict cost masking &amp; live manager approval workflows.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center justify-content-between pt-3 border-top-glass small" style="color: #94a3b8;">
+      <span><i class="bi bi-lock-fill me-1 text-emerald"></i> HttpOnly JWT Rotation</span>
+      <span class="font-monospace" style="font-size: 0.72rem;">SQLite WAL &middot; Isolated Tenants</span>
+    </div>
+  </section>
+
+  <!-- RIGHT SIGN-IN STAGE -->
+  <section class="auth-form-stage d-flex flex-column justify-content-center align-items-center p-4 p-md-5">
+    <div class="auth-container">
+      <!-- Mobile-only brand mark -->
+      <div class="text-center mb-4 d-lg-none">
+        <div class="showcase-mark mx-auto mb-2">
+          <i class="bi bi-cpu-fill fs-4"></i>
+        </div>
+        <h1 class="h4 fw-bold mb-0">ApexCellular Retail OS</h1>
+      </div>
+
+      <div class="mb-4">
+        <span class="badge bg-primary-subtle text-primary border mb-2 px-2 py-1">Workspace Access</span>
+        <h2 class="h3 fw-bold mb-1">Welcome back</h2>
+        <p class="text-muted small mb-0">Sign in to access your multi-tenant retail command center.</p>
+      </div>
+
+      <!-- Error Alert -->
+      <div *ngIf="errorMessage" class="alert alert-danger d-flex align-items-center py-2 px-3 small mb-3" role="alert">
+        <i class="bi bi-exclamation-circle-fill me-2 fs-6"></i>
+        <div>{{ errorMessage }}</div>
+      </div>
+
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
+        <div class="mb-3">
+          <label for="login-email" class="form-label small fw-semibold">Work Email</label>
+          <div class="input-group">
+            <span class="input-group-text border-end-0">
+              <i class="bi bi-envelope"></i>
+            </span>
+            <input
+              id="login-email"
+              type="email"
+              class="form-control border-start-0"
+              [class.is-invalid]="loginForm.get('email')?.touched && loginForm.get('email')?.invalid"
+              formControlName="email"
+              placeholder="name@shop.com"
+              autocomplete="email"
+            />
+          </div>
+          <div *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.invalid" class="text-danger small mt-1">
+            <span *ngIf="loginForm.get('email')?.errors?.['required']">Email address is required.</span>
+            <span *ngIf="loginForm.get('email')?.errors?.['email']">Please enter a valid email address.</span>
+          </div>
+        </div>
+
         <div class="mb-4">
-          <h2 class="h5 fw-bold mb-1 text-dark">Sign in to your shop</h2>
-          <p class="text-secondary small mb-0">Enter your credentials to access your tenant workspace.</p>
+          <label for="login-password" class="form-label small fw-semibold">Password</label>
+          <div class="input-group">
+            <span class="input-group-text border-end-0">
+              <i class="bi bi-lock"></i>
+            </span>
+            <input
+              id="login-password"
+              [type]="showPassword ? 'text' : 'password'"
+              class="form-control border-start-0 border-end-0"
+              [class.is-invalid]="loginForm.get('password')?.touched && loginForm.get('password')?.invalid"
+              formControlName="password"
+              placeholder="Enter password"
+              autocomplete="current-password"
+            />
+            <button
+              type="button"
+              class="btn btn-outline-secondary border-start-0"
+              (click)="togglePasswordVisibility()"
+              tabindex="-1"
+              aria-label="Toggle password visibility"
+            >
+              <i class="bi" [class.bi-eye]="!showPassword" [class.bi-eye-slash]="showPassword"></i>
+            </button>
+          </div>
+          <div *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.invalid" class="text-danger small mt-1">
+            Password is required.
+          </div>
         </div>
 
-        <!-- Error Alert -->
-        <div *ngIf="errorMessage" class="alert alert-danger d-flex align-items-center py-2 px-3 small mb-3" role="alert">
-          <i class="bi bi-exclamation-circle-fill me-2 fs-6"></i>
-          <div>{{ errorMessage }}</div>
+        <button
+          type="submit"
+          class="btn btn-primary w-100 py-2 fw-semibold d-flex align-items-center justify-content-center gap-2"
+          [disabled]="submitting"
+        >
+          <span *ngIf="submitting" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          <span>{{ submitting ? 'Authenticating...' : 'Sign In to Workspace' }}</span>
+          <i *ngIf="!submitting" class="bi bi-arrow-right"></i>
+        </button>
+      </form>
+
+      <!-- Instant Demo Sandbox Personas -->
+      <div class="demo-section mt-4 pt-4 border-top">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="text-uppercase fw-bold text-muted" style="font-size: 0.68rem; letter-spacing: 0.08em;">
+            Instant Demo Workspaces
+          </span>
+          <span class="text-muted" style="font-size: 0.7rem;">Click to auto-fill</span>
         </div>
 
-        <!-- Form -->
-        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
-          <!-- Email Input -->
-          <div class="mb-3">
-            <label for="login-email" class="form-label small fw-semibold text-secondary">Email Address</label>
-            <div class="input-group">
-              <span class="input-group-text bg-light border-end-0 text-muted">
-                <i class="bi bi-envelope"></i>
-              </span>
-              <input
-                id="login-email"
-                type="email"
-                class="form-control"
-                [class.is-invalid]="loginForm.get('email')?.touched && loginForm.get('email')?.invalid"
-                formControlName="email"
-                placeholder="name@shop.com"
-                autocomplete="email"
-              />
-            </div>
-            <div *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.invalid" class="text-danger small mt-1">
-              <span *ngIf="loginForm.get('email')?.errors?.['required']">Email address is required.</span>
-              <span *ngIf="loginForm.get('email')?.errors?.['email']">Please enter a valid email address.</span>
-            </div>
-          </div>
-
-          <!-- Password Input -->
-          <div class="mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <label for="login-password" class="form-label small fw-semibold text-secondary mb-0">Password</label>
-            </div>
-            <div class="input-group">
-              <span class="input-group-text bg-light border-end-0 text-muted">
-                <i class="bi bi-lock"></i>
-              </span>
-              <input
-                id="login-password"
-                [type]="showPassword ? 'text' : 'password'"
-                class="form-control"
-                [class.is-invalid]="loginForm.get('password')?.touched && loginForm.get('password')?.invalid"
-                formControlName="password"
-                placeholder="Enter password"
-                autocomplete="current-password"
-              />
-              <button
-                type="button"
-                class="btn btn-outline-light border border-start-0 text-secondary"
-                (click)="togglePasswordVisibility()"
-                tabindex="-1"
-                aria-label="Toggle password visibility"
-              >
-                <i class="bi" [class.bi-eye]="!showPassword" [class.bi-eye-slash]="showPassword"></i>
-              </button>
-            </div>
-            <div *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.invalid" class="text-danger small mt-1">
-              Password is required.
-            </div>
-          </div>
-
-          <!-- Submit Button -->
+        <div class="d-grid gap-2">
           <button
-            type="submit"
-            class="btn btn-primary w-100 py-2 fw-semibold d-flex align-items-center justify-content-center"
+            type="button"
+            class="demo-persona-btn text-start"
+            (click)="fillDemo('admin@apex.com')"
             [disabled]="submitting"
           >
-            <span *ngIf="submitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-            <span>{{ submitting ? 'Signing In...' : 'Sign In to Workspace' }}</span>
+            <div class="persona-icon tone-brand"><i class="bi bi-shield-fill-check"></i></div>
+            <div class="flex-grow-1 overflow-hidden">
+              <div class="fw-semibold small text-truncate">Apex Cellular — Admin</div>
+              <div class="text-muted font-monospace text-truncate" style="font-size: 0.72rem;">admin@apex.com</div>
+            </div>
+            <span class="badge bg-primary-subtle text-primary border">ADMIN</span>
           </button>
-        </form>
 
-        <!-- Quick Demo Switcher -->
-        <div class="demo-section mt-4 pt-3 border-top">
-          <div class="text-center mb-2">
-            <span class="badge bg-light text-secondary border px-2 py-1 fw-normal">Instant Demo Logins</span>
-          </div>
-          <div class="d-grid gap-2">
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-between text-start px-3"
-              (click)="fillDemo('admin@apex.com')"
-            >
-              <div>
-                <strong class="d-block text-dark">Apex Cellular — Admin</strong>
-                <span class="text-muted small">admin@apex.com</span>
-              </div>
-              <span class="badge bg-primary-subtle text-primary">SHOP_ADMIN</span>
-            </button>
+          <button
+            type="button"
+            class="demo-persona-btn text-start"
+            (click)="fillDemo('keeper@apex.com')"
+            [disabled]="submitting"
+          >
+            <div class="persona-icon tone-info"><i class="bi bi-person-badge-fill"></i></div>
+            <div class="flex-grow-1 overflow-hidden">
+              <div class="fw-semibold small text-truncate">Apex Cellular — Shopkeeper</div>
+              <div class="text-muted font-monospace text-truncate" style="font-size: 0.72rem;">keeper@apex.com</div>
+            </div>
+            <span class="badge bg-info-subtle text-info border">POS</span>
+          </button>
 
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-between text-start px-3"
-              (click)="fillDemo('keeper@apex.com')"
-            >
-              <div>
-                <strong class="d-block text-dark">Apex Cellular — Shopkeeper</strong>
-                <span class="text-muted small">keeper@apex.com</span>
-              </div>
-              <span class="badge bg-info-subtle text-info">SHOPKEEPER</span>
-            </button>
-
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-between text-start px-3"
-              (click)="fillDemo('owner@novamobile.com')"
-            >
-              <div>
-                <strong class="d-block text-dark">Nova Mobile Hub — Admin</strong>
-                <span class="text-muted small">owner@novamobile.com (Tenant 2)</span>
-              </div>
-              <span class="badge bg-secondary-subtle text-secondary">TENANT 2</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Footer Link -->
-        <div class="text-center mt-4 pt-2">
-          <p class="text-secondary small mb-0">
-            Need to register a new store?
-            <a routerLink="/register" class="text-primary fw-semibold text-decoration-none ms-1">Register new shop</a>
-          </p>
+          <button
+            type="button"
+            class="demo-persona-btn text-start"
+            (click)="fillDemo('owner@novamobile.com')"
+            [disabled]="submitting"
+          >
+            <div class="persona-icon tone-purple"><i class="bi bi-building-lock"></i></div>
+            <div class="flex-grow-1 overflow-hidden">
+              <div class="fw-semibold small text-truncate">Nova Mobile Hub — Tenant 2</div>
+              <div class="text-muted font-monospace text-truncate" style="font-size: 0.72rem;">owner@novamobile.com</div>
+            </div>
+            <span class="badge bg-secondary-subtle text-secondary border">ISOLATED</span>
+          </button>
         </div>
       </div>
-    </div>
 
-    <!-- Security footnote -->
-    <div class="text-center mt-4 text-muted small">
-      <i class="bi bi-shield-lock me-1"></i>
-      Multi-tenant isolated with HttpOnly cookie rotation & JWT security.
+      <div class="text-center mt-4 pt-2">
+        <p class="text-muted small mb-0">
+          Opening a new mobile retail store?
+          <a routerLink="/register" class="text-primary fw-semibold text-decoration-none ms-1">Register tenant workspace &rarr;</a>
+        </p>
+      </div>
     </div>
-  </div>
+  </section>
 </div>

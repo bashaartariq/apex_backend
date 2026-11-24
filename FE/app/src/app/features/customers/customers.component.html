@@ -1,118 +1,599 @@
-<div class="container-fluid px-3 px-lg-4 py-4" style="max-inline-size: 1600px;">
-  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+<div class="container-fluid px-3 px-lg-4 py-4" style="max-inline-size: 1620px;">
+  <!-- Header -->
+  <div class="page-hero">
     <div>
-      <div class="d-flex align-items-center gap-2 mb-1">
-        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold px-2 py-1">
-          Store Directory
-        </span>
-        <span class="text-muted small">&middot; Customer Relationship &amp; IMEI Registration</span>
-      </div>
-      <h1 class="h3 fw-bold text-dark mb-0">Retail Customers</h1>
+      <span class="page-eyebrow"><i class="bi bi-people-fill"></i> Customer CRM &amp; Credit Ledger</span>
+      <h1 class="page-title">Customer Accounts &amp; Debtors</h1>
+      <p class="page-subtitle">Encrypted AES-256-GCM CNIC profiles, authorized credit limits, statements &amp; debt collection.</p>
     </div>
 
-    <button type="button" class="btn-app btn-app-primary shadow-xs" (click)="openAddModal()">
+    <button type="button" class="btn-app btn-app-primary" (click)="openAddModal()">
       <i class="bi bi-person-plus-fill" aria-hidden="true"></i>
       <span>Add New Customer</span>
     </button>
   </div>
 
-  <section class="table-container mb-4" aria-label="Customer Directory">
-    <div class="table-toolbar">
-      <div class="search-input-group" style="inline-size: 320px;">
-        <i class="bi bi-search search-icon" aria-hidden="true"></i>
+  <!-- CRM KPI Summary Strip -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+      <div class="metric-card h-100">
+        <div class="metric-header">
+          <span class="metric-label">Total Customers</span>
+          <div class="metric-icon-box bg-primary-subtle text-primary"><i class="bi bi-people"></i></div>
+        </div>
+        <div class="metric-value font-monospace">{{ customers.length }}</div>
+        <div class="metric-footer"><span class="text-muted">Registered tenant accounts</span></div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="metric-card accent-info h-100">
+        <div class="metric-header">
+          <span class="metric-label">Verified CNIC Vault</span>
+          <div class="metric-icon-box bg-info-subtle text-info"><i class="bi bi-shield-lock-fill"></i></div>
+        </div>
+        <div class="metric-value font-monospace">{{ verifiedCnicCount }}</div>
+        <div class="metric-footer"><span class="text-muted">Eligible for serialized phone sales</span></div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="metric-card accent-danger h-100">
+        <div class="metric-header">
+          <span class="metric-label">Outstanding Debt</span>
+          <div class="metric-icon-box bg-danger-subtle text-danger"><i class="bi bi-wallet2"></i></div>
+        </div>
+        <div class="metric-value text-danger font-monospace">${{ totalReceivables | number:'1.2-2' }}</div>
+        <div class="metric-footer"><span class="text-muted">{{ activeDebtorsCount }} active debtor account(s)</span></div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="metric-card accent-success h-100">
+        <div class="metric-header">
+          <span class="metric-label">Authorized Credit Pool</span>
+          <div class="metric-icon-box bg-success-subtle text-success"><i class="bi bi-credit-card-2-back"></i></div>
+        </div>
+        <div class="metric-value font-monospace">${{ totalCreditExtended | number:'1.2-2' }}</div>
+        <div class="metric-footer"><span class="text-muted">Combined store credit limits</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Container Card -->
+  <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
+    <div class="card-header bg-white border-bottom p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <!-- Search Input -->
+      <div class="input-group" style="max-inline-size: 380px;">
+        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
         <input
           type="search"
-          class="app-input"
-          placeholder="Search customer name, phone, email..."
+          class="form-control border-start-0 bg-light"
+          placeholder="Search by customer name, phone, or masked CNIC..."
           [formControl]="searchControl"
         />
       </div>
 
-      <span class="badge bg-light text-secondary border small">
-        {{ filteredCustomers.length }} Registered Customers
-      </span>
+      <!-- Status Filters -->
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="btn-group btn-group-sm" role="group">
+          <button
+            type="button"
+            class="btn"
+            [ngClass]="statusFilter === 'ALL' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="setStatusFilter('ALL')"
+          >
+            All ({{ customers.length }})
+          </button>
+          <button
+            type="button"
+            class="btn"
+            [ngClass]="statusFilter === 'DEBTORS' ? 'btn-danger' : 'btn-outline-secondary'"
+            (click)="setStatusFilter('DEBTORS')"
+          >
+            Debtors ({{ activeDebtorsCount }})
+          </button>
+          <button
+            type="button"
+            class="btn"
+            [ngClass]="statusFilter === 'ACTIVE' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="setStatusFilter('ACTIVE')"
+          >
+            Active
+          </button>
+          <button
+            type="button"
+            class="btn"
+            [ngClass]="statusFilter === 'INACTIVE' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="setStatusFilter('INACTIVE')"
+          >
+            Inactive
+          </button>
+        </div>
+
+        <span class="badge bg-light text-secondary border small px-2 py-2">
+          {{ filteredCustomers.length }} Record(s)
+        </span>
+      </div>
     </div>
 
-    <div class="data-table-wrapper">
-      <table class="app-table">
-        <thead>
+    <!-- Data Table -->
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+        <thead class="table-light">
           <tr>
-            <th scope="col" style="inline-size: 25%;">Customer Profile</th>
-            <th scope="col" style="inline-size: 15%;">Contact Phone</th>
-            <th scope="col" style="inline-size: 15%;">Loyalty Tier</th>
-            <th scope="col" class="col-numeric" style="inline-size: 15%;">Lifetime Spend</th>
-            <th scope="col" class="text-center" style="inline-size: 10%;">Visits</th>
-            <th scope="col" style="inline-size: 20%;">Registered Devices (IMEI)</th>
+            <th scope="col" style="width: 25%;">Customer Profile</th>
+            <th scope="col" style="width: 15%;">Contact Phone</th>
+            <th scope="col" style="width: 20%;">CNIC (Encrypted &amp; Masked)</th>
+            <th scope="col" class="text-end" style="width: 15%;">Outstanding Balance</th>
+            <th scope="col" class="text-center" style="width: 12%;">Status</th>
+            <th scope="col" class="text-center" style="width: 13%;">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let c of filteredCustomers">
+          <tr *ngIf="isLoading">
+            <td colspan="6" class="text-center py-5">
+              <div class="spinner-border text-primary" role="status"></div>
+              <p class="text-muted small mt-2">Loading customer records...</p>
+            </td>
+          </tr>
+
+          <tr *ngIf="!isLoading && filteredCustomers.length === 0">
+            <td colspan="6" class="text-center py-5 text-muted">
+              <i class="bi bi-people fs-1 opacity-50"></i>
+              <p class="mt-2">No customers found.</p>
+            </td>
+          </tr>
+
+          <tr *ngFor="let c of filteredCustomers" (click)="viewStatement(c)" style="cursor: pointer;">
             <td>
               <div class="d-flex align-items-center gap-2">
-                <div class="avatar-sm rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center" style="inline-size: 2.25rem; block-size: 2.25rem; font-size: 0.8rem;">
+                <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 2.25rem; height: 2.25rem; font-size: 0.8rem;">
                   {{ c.name.substring(0, 2).toUpperCase() }}
                 </div>
                 <div>
                   <div class="fw-bold text-dark lh-sm">{{ c.name }}</div>
-                  <small class="text-muted">{{ c.email }}</small>
+                  <small class="text-muted">{{ c.email || 'No email registered' }}</small>
                 </div>
               </div>
             </td>
-            <td class="font-monospace text-dark">{{ c.phone }}</td>
             <td>
-              <span
-                class="badge"
-                [ngClass]="c.loyaltyTier === 'Gold VIP' ? 'bg-warning-subtle text-warning border border-warning-subtle' : (c.loyaltyTier === 'Silver' ? 'bg-light text-dark border' : 'bg-light text-secondary border')"
-              >
-                <i class="bi bi-award me-1"></i>{{ c.loyaltyTier }}
+              <span class="font-monospace text-secondary">{{ c.phone || '—' }}</span>
+            </td>
+            <td>
+              <span *ngIf="c.cnicMasked" class="badge bg-secondary-subtle text-secondary border font-monospace px-2 py-1">
+                <i class="bi bi-shield-lock-fill me-1 text-primary"></i>{{ c.cnicMasked }}
+              </span>
+              <span *ngIf="!c.cnicMasked" class="badge bg-light text-muted border">
+                Unregistered
               </span>
             </td>
-            <td class="col-numeric col-mono fw-bold text-dark">
-              ${{ c.totalSpent | number:'1.2-2' }}
+            <td class="text-end font-monospace">
+              <span
+                class="badge px-2 py-1 font-monospace"
+                [ngClass]="c.outstandingBalance > 0 ? 'bg-danger-subtle text-danger border border-danger-subtle fw-bold' : 'bg-success-subtle text-success border border-success-subtle'"
+              >
+                ${{ c.outstandingBalance | number:'1.2-2' }}
+              </span>
             </td>
-            <td class="text-center font-monospace">{{ c.totalVisits }}</td>
-            <td>
-              <div *ngIf="c.registeredImeis.length === 0" class="text-muted small">None on file</div>
-              <div *ngFor="let imei of c.registeredImeis" class="badge bg-light text-dark border font-monospace me-1 mb-1" style="font-size: 0.75rem;">
-                IMEI: {{ imei }}
+            <td class="text-center">
+              <span
+                class="badge px-2 py-1"
+                [ngClass]="c.status === 'ACTIVE' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle'"
+              >
+                {{ c.status }}
+              </span>
+            </td>
+            <td class="text-center" (click)="$event.stopPropagation()">
+              <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-outline-primary" (click)="viewStatement(c)" title="View Statement / Ledger">
+                  <i class="bi bi-file-earmark-text me-1"></i> Statement
+                </button>
+                <button type="button" class="btn btn-outline-secondary" (click)="openEditModal(c, $event)" title="Edit Customer">
+                  <i class="bi bi-pencil"></i>
+                </button>
               </div>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-  </section>
+  </div>
 </div>
 
-<!-- ADD CUSTOMER MODAL -->
-<div *ngIf="showAddModal" class="drawer-backdrop" (click)="showAddModal = false" aria-hidden="true"></div>
-<div *ngIf="showAddModal" class="modal-dialog-custom shadow-lg" role="dialog" aria-modal="true" aria-label="Add Customer">
-  <div class="modal-content bg-white p-4 rounded-3 border">
-    <div class="d-flex align-items-center justify-content-between pb-2 border-bottom mb-3">
-      <h2 class="h6 fw-bold mb-0 text-dark">Add New Retail Customer</h2>
-      <button type="button" class="btn-close" (click)="showAddModal = false"></button>
-    </div>
+<!-- MODAL: ADD / EDIT CUSTOMER -->
+<div *ngIf="showModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow border-0">
+      <div class="modal-header bg-light">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-person-fill me-2 text-primary"></i>
+          {{ isEditing ? 'Edit Customer Profile' : 'Register New Customer' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="showModal = false"></button>
+      </div>
 
-    <div class="mb-3">
-      <label for="cName" class="app-form-label">Full Name <span class="required-star">*</span></label>
-      <input id="cName" type="text" class="app-input" placeholder="e.g. Jessica Taylor" [(ngModel)]="newName" />
-    </div>
+      <div class="modal-body p-4">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Full Name *</label>
+          <input
+            type="text"
+            class="form-control"
+            [class.is-invalid]="fieldErrors['name']"
+            [(ngModel)]="formName"
+            (ngModelChange)="fieldErrors['name'] = ''"
+            placeholder="e.g. Usman Ali"
+          />
+          <div *ngIf="fieldErrors['name']" class="invalid-feedback d-block small">
+            {{ fieldErrors['name'] }}
+          </div>
+        </div>
 
-    <div class="mb-3">
-      <label for="cPhone" class="app-form-label">Phone Number <span class="required-star">*</span></label>
-      <input id="cPhone" type="tel" class="app-input" placeholder="+1 (555) 782-9901" [(ngModel)]="newPhone" />
-    </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-bold">Phone Number</label>
+            <input
+              type="tel"
+              appPhoneMask
+              class="form-control"
+              [class.is-invalid]="fieldErrors['phone']"
+              [(ngModel)]="formPhone"
+              (ngModelChange)="fieldErrors['phone'] = ''"
+              placeholder="0300-1234567"
+            />
+            <div *ngIf="fieldErrors['phone']" class="invalid-feedback d-block small">
+              {{ fieldErrors['phone'] }}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-bold">Email Address</label>
+            <input
+              type="email"
+              class="form-control"
+              [class.is-invalid]="fieldErrors['email']"
+              [(ngModel)]="formEmail"
+              (ngModelChange)="fieldErrors['email'] = ''"
+              placeholder="customer@example.com"
+            />
+            <div *ngIf="fieldErrors['email']" class="invalid-feedback d-block small">
+              {{ fieldErrors['email'] }}
+            </div>
+          </div>
+        </div>
 
-    <div class="mb-3">
-      <label for="cEmail" class="app-form-label">Email Address</label>
-      <input id="cEmail" type="email" class="app-input" placeholder="jessica@example.com" [(ngModel)]="newEmail" />
-    </div>
+        <div class="mb-3">
+          <label class="form-label small fw-bold">CNIC Number (13 digits)</label>
+          <input
+            type="text"
+            appCnicMask
+            class="form-control font-monospace"
+            [class.is-invalid]="fieldErrors['cnic']"
+            [(ngModel)]="formCnic"
+            (ngModelChange)="fieldErrors['cnic'] = ''"
+            placeholder="42101-1234567-1"
+            maxlength="15"
+          />
+          <div *ngIf="fieldErrors['cnic']" class="invalid-feedback d-block small">
+            {{ fieldErrors['cnic'] }}
+          </div>
+          <div class="form-text small text-muted">
+            <i class="bi bi-shield-lock me-1 text-primary"></i>Stored encrypted with AES-256-GCM. Required for serialized phone sales.
+            <span *ngIf="isEditing" class="d-block text-secondary mt-1">Leave masked value to preserve current CNIC, or enter a new 13-digit number to update.</span>
+          </div>
+        </div>
 
-    <div class="d-flex justify-content-end gap-2 pt-2 border-top">
-      <button type="button" class="btn-app btn-app-secondary" (click)="showAddModal = false">Cancel</button>
-      <button type="button" class="btn-app btn-app-primary" (click)="saveCustomer()" [disabled]="!newName || !newPhone">
-        Register Customer
-      </button>
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Physical Address</label>
+          <input type="text" class="form-control" [(ngModel)]="formAddress" placeholder="Street, city, area..." />
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-bold">Credit Limit ($)</label>
+            <input
+              type="number"
+              appNumberOnly
+              [allowDecimals]="true"
+              min="0"
+              step="10"
+              class="form-control form-control-sm font-monospace"
+              [(ngModel)]="formCreditLimit"
+              [disabled]="!auth.isAdmin()"
+              placeholder="0.00"
+            />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-bold">Account Status</label>
+            <select class="form-select form-select-sm" [(ngModel)]="formStatus">
+              <option value="ACTIVE">Active Account</option>
+              <option value="INACTIVE">Inactive / Suspended</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label small fw-bold">Internal Notes</label>
+          <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="formNotes" placeholder="Customer preferences or credit remarks..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-outline-secondary" (click)="showModal = false">Cancel</button>
+        <button type="button" class="btn btn-primary px-4" (click)="saveCustomer()">
+          {{ isEditing ? 'Save Changes' : 'Register Customer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DRAWER / MODAL: CUSTOMER FINANCIAL STATEMENT & LEDGER -->
+<div *ngIf="showStatementDrawer && selectedCustomer" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.6);">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content shadow border-0">
+      <div class="modal-header bg-dark text-white">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-circle bg-white text-dark fw-bold d-flex align-items-center justify-content-center" style="width: 2.5rem; height: 2.5rem;">
+            {{ selectedCustomer.name.substring(0, 2).toUpperCase() }}
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold text-white mb-0">{{ selectedCustomer.name }}</h5>
+            <div class="d-flex align-items-center gap-2 mt-1">
+              <small class="text-light opacity-75 font-monospace">
+                {{ selectedCustomer.phone || 'No phone' }} &middot; CNIC: {{ isCnicRevealed && revealedCnic ? revealedCnic : (selectedCustomer.cnicMasked || 'None') }}
+              </small>
+              <button
+                *ngIf="auth.isAdmin() && selectedCustomer.hasCnic"
+                type="button"
+                class="btn btn-sm btn-outline-light py-0 px-2"
+                (click)="toggleRevealCnic()"
+                [disabled]="isRevealingCnic"
+                [title]="isCnicRevealed ? 'Hide full CNIC' : 'Decrypt & reveal full CNIC (Admin Authorized)'"
+                style="font-size: 0.7rem;"
+              >
+                <span *ngIf="isRevealingCnic" class="spinner-border spinner-border-sm me-1"></span>
+                <i *ngIf="!isRevealingCnic" class="bi me-1" [ngClass]="isCnicRevealed ? 'bi-eye-slash-fill text-warning' : 'bi-eye-fill text-info'"></i>
+                <span>{{ isCnicRevealed ? 'Hide Full CNIC' : 'Reveal Full CNIC' }}</span>
+              </button>
+              <button
+                *ngIf="isCnicRevealed && revealedCnic"
+                type="button"
+                class="btn btn-sm btn-outline-light py-0 px-2"
+                (click)="copyRevealedCnic()"
+                style="font-size: 0.7rem;"
+                title="Copy Decrypted CNIC"
+              >
+                <i class="bi bi-clipboard"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" (click)="showStatementDrawer = false"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <!-- Credit Utilization Bar -->
+        <div *ngIf="selectedCustomer.creditLimit > 0" class="p-3 bg-light rounded-3 border mb-3">
+          <div class="d-flex justify-content-between small mb-1 font-monospace">
+            <span>Credit Utilization ({{ getCreditUtilizationPct(selectedCustomer) }}%)</span>
+            <span>Used ${{ selectedCustomer.outstandingBalance | number:'1.2-2' }} / Limit ${{ selectedCustomer.creditLimit | number:'1.2-2' }}</span>
+          </div>
+          <div class="progress" style="block-size: 7px;">
+            <div
+              class="progress-bar"
+              [ngClass]="getCreditUtilizationPct(selectedCustomer) > 85 ? 'bg-danger' : 'bg-primary'"
+              [style.width.%]="getCreditUtilizationPct(selectedCustomer)"
+            ></div>
+          </div>
+        </div>
+        <!-- KPI Cards -->
+        <div class="row g-3 mb-4">
+          <div class="col-md-4">
+            <div class="p-3 bg-light rounded border text-center">
+              <span class="small text-muted text-uppercase d-block fw-bold">Total Sales Invoices</span>
+              <span class="fs-4 fw-bold font-monospace text-dark">{{ customerStatement?.sales?.length || 0 }}</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="p-3 bg-light rounded border text-center" [class.border-danger]="selectedCustomer.outstandingBalance > 0">
+              <span class="small text-muted text-uppercase d-block fw-bold">Outstanding Balance Due</span>
+              <span class="fs-4 fw-bold font-monospace" [class.text-danger]="selectedCustomer.outstandingBalance > 0" [class.text-success]="selectedCustomer.outstandingBalance === 0">
+                ${{ selectedCustomer.outstandingBalance | number:'1.2-2' }}
+              </span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="p-3 bg-light rounded border text-center">
+              <span class="small text-muted text-uppercase d-block fw-bold">Total Payment Receipts</span>
+              <span class="fs-4 fw-bold font-monospace text-primary">{{ customerStatement?.receipts?.length || 0 }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="isLoadingStatement" class="text-center py-4">
+          <div class="spinner-border text-primary" role="status"></div>
+          <p class="text-muted small mt-2">Loading financial statement...</p>
+        </div>
+
+        <div *ngIf="!isLoadingStatement && customerStatement">
+          <!-- Invoices Section -->
+          <div class="card border-0 shadow-xs mb-4">
+            <div class="card-header bg-light fw-bold d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-receipt me-1"></i> Sales Invoices History</span>
+              <span class="badge bg-secondary">{{ customerStatement.sales.length }} Invoice(s)</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                <thead class="table-light">
+                  <tr>
+                    <th>Invoice #</th>
+                    <th>Date</th>
+                    <th class="text-end">Total</th>
+                    <th class="text-end">Paid</th>
+                    <th class="text-end">Balance Due</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngIf="customerStatement.sales.length === 0">
+                    <td colspan="7" class="text-center py-3 text-muted">No sales invoices recorded yet.</td>
+                  </tr>
+                  <tr *ngFor="let s of customerStatement.sales">
+                    <td class="fw-bold font-monospace">{{ s.invoiceNo }}</td>
+                    <td class="text-muted">{{ s.createdAt | date:'shortDate' }}</td>
+                    <td class="text-end font-monospace">${{ s.totalAmount | number:'1.2-2' }}</td>
+                    <td class="text-end font-monospace text-success">${{ s.amountPaid | number:'1.2-2' }}</td>
+                    <td class="text-end font-monospace" [class.text-danger]="s.balanceDue > 0" [class.fw-bold]="s.balanceDue > 0">
+                      ${{ s.balanceDue | number:'1.2-2' }}
+                    </td>
+                    <td class="text-center">
+                      <span
+                        class="badge"
+                        [ngClass]="s.paymentStatus === 'PAID' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'"
+                      >
+                        {{ s.paymentStatus }}
+                      </span>
+                    </td>
+                    <td class="text-center">
+                      <div class="d-inline-flex align-items-center gap-1">
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-secondary py-0 px-2"
+                          (click)="downloadInvoicePdf(s.id, s.invoiceNo, $event)"
+                          title="Download Invoice PDF"
+                        >
+                          <i class="bi bi-file-earmark-pdf text-danger"></i>
+                        </button>
+                        <button
+                          *ngIf="s.balanceDue > 0"
+                          type="button"
+                          class="btn btn-sm btn-primary py-0 px-2"
+                          (click)="openCollectPayment(s, $event)"
+                        >
+                          Collect Debt
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Receipts Section -->
+          <div class="card border-0 shadow-xs">
+            <div class="card-header bg-light fw-bold d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-wallet2 me-1"></i> Customer Payment Receipts</span>
+              <span class="badge bg-secondary">{{ customerStatement.receipts.length }} Receipt(s)</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                <thead class="table-light">
+                  <tr>
+                    <th>Receipt #</th>
+                    <th>Date</th>
+                    <th>Payment Method</th>
+                    <th class="text-end">Amount Received</th>
+                    <th class="text-end">Remaining Balance</th>
+                    <th class="text-center">PDF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngIf="customerStatement.receipts.length === 0">
+                    <td colspan="6" class="text-center py-3 text-muted">No debt collection receipts recorded.</td>
+                  </tr>
+                  <tr *ngFor="let r of customerStatement.receipts">
+                    <td class="fw-bold font-monospace text-primary">{{ r.receiptNo }}</td>
+                    <td class="text-muted">{{ r.createdAt | date:'shortDate' }}</td>
+                    <td><span class="badge bg-light text-dark border">{{ r.paymentMethod }}</span></td>
+                    <td class="text-end font-monospace text-success fw-bold">+${{ r.amountReceived | number:'1.2-2' }}</td>
+                    <td class="text-end font-monospace">${{ r.remainingBalance | number:'1.2-2' }}</td>
+                    <td class="text-center">
+                      <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" (click)="downloadReceiptPdf(r.id)">
+                        <i class="bi bi-file-earmark-pdf"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary px-4" (click)="showStatementDrawer = false">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: COLLECT PAYMENT ON DEBT INVOICE -->
+<div *ngIf="showCollectPaymentModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.6);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow border-0">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="bi bi-cash-coin me-2"></i>Collect Customer Payment</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="showCollectPaymentModal = false"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <div class="p-3 bg-light rounded border mb-3">
+          <div class="d-flex justify-content-between small text-muted">
+            <span>Customer:</span>
+            <span class="fw-bold text-dark">{{ selectedCustomer?.name }}</span>
+          </div>
+          <div class="d-flex justify-content-between small text-muted mt-1">
+            <span>Outstanding Invoice Balance:</span>
+            <span class="fw-bold text-danger font-monospace">${{ selectedInvoiceBalance | number:'1.2-2' }}</span>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Amount to Collect ($) *</label>
+          <input
+            type="number"
+            appNumberOnly
+            step="0.01"
+            class="form-control form-control-lg font-monospace fw-bold"
+            [class.is-invalid]="paymentError"
+            [(ngModel)]="paymentAmount"
+            (ngModelChange)="paymentError = null"
+          />
+          <div *ngIf="paymentError" class="invalid-feedback d-block small">
+            {{ paymentError }}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Payment Method</label>
+          <select class="form-select" [(ngModel)]="paymentMethod">
+            <option value="CASH">Cash</option>
+            <option value="BANK_TRANSFER">Bank Transfer</option>
+            <option value="CARD">Debit / Credit Card</option>
+            <option value="JAZZCASH">JazzCash</option>
+            <option value="EASYPAISA">EasyPaisa</option>
+            <option value="CRYPTO_USDT">Crypto (USDT)</option>
+            <option value="CUSTOM">Custom</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Transaction Reference / Slip #</label>
+          <input type="text" class="form-control" [(ngModel)]="paymentReference" placeholder="e.g. TXN-88123" />
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label small fw-bold">Receipt Notes</label>
+          <input type="text" class="form-control form-control-sm" [(ngModel)]="paymentNotes" placeholder="Payment remarks..." />
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-outline-secondary" (click)="showCollectPaymentModal = false">Cancel</button>
+        <button type="button" class="btn btn-success px-4" (click)="submitPayment()" [disabled]="isProcessingPayment">
+          <span *ngIf="isProcessingPayment" class="spinner-border spinner-border-sm me-1"></span>
+          Issue Payment Receipt
+        </button>
+      </div>
     </div>
   </div>
 </div>

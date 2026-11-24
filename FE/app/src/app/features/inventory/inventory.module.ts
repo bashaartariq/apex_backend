@@ -11,33 +11,7 @@ import { InventoryComponent } from './inventory.component';
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
-    RouterModule.forChild([
-      {
-        path: '',
-        component: InventoryComponent,
-        title: 'Hardware & Accessories Inventory',
-      },
-      {
-        path: 'phones',
-        component: InventoryComponent,
-        title: 'Mobile Phones Inventory',
-      },
-      {
-        path: 'accessories',
-        component: InventoryComponent,
-        title: 'Accessories Catalog',
-      },
-      {
-        path: 'purchases',
-        component: InventoryComponent,
-        title: 'Stock Inward & Purchases',
-      },
-      {
-        path: 'suppliers',
-        component: InventoryComponent,
-        title: 'Hardware Suppliers',
-      },
-    ]),
+    RouterModule,
     SharedModule,
   ],
   exports: [InventoryComponent],

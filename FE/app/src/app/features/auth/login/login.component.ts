@@ -30,7 +30,12 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
+    const rawReturn = this.route.snapshot.queryParams['returnUrl'];
+    if (rawReturn && !rawReturn.includes('/login') && !rawReturn.includes('/register')) {
+      this.returnUrl = rawReturn;
+    } else {
+      this.returnUrl = '/dashboard';
+    }
   }
 
   togglePasswordVisibility(): void {
@@ -38,6 +43,7 @@ export class LoginComponent implements OnInit {
   }
 
   fillDemo(email: string): void {
+    if (this.submitting) return;
     this.loginForm.patchValue({
       email,
       password: 'Password123!',
@@ -45,6 +51,10 @@ export class LoginComponent implements OnInit {
   }
 
   onSubmit(): void {
+    if (this.submitting) {
+      return;
+    }
+
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
       return;
@@ -56,13 +66,32 @@ export class LoginComponent implements OnInit {
     const { email, password } = this.loginForm.value;
 
     this.auth.login({ email, password }).subscribe({
-      next: (res) => {
+      next: (_res) => {
         this.submitting = false;
-        this.router.navigateByUrl(this.returnUrl);
+
+        let target = this.returnUrl && !this.returnUrl.includes('/login') ? this.returnUrl : '/dashboard';
+
+        // Intelligent redirect if shopkeeper lacks dashboard.view but has pos.access
+        if (
+          !this.auth.isAdmin() &&
+          !this.auth.hasPermission('dashboard.view') &&
+          this.auth.hasPermission('pos.access')
+        ) {
+          target = '/pos';
+        }
+
+        this.router.navigateByUrl(target).catch(() => {
+          this.router.navigate(['/dashboard']);
+        });
       },
       error: (err) => {
         this.submitting = false;
-        const msg = err.error?.message || 'Invalid email or password. Please try again.';
+        const msg =
+          err.error?.message ||
+          err.message ||
+          (err.status === 0
+            ? 'Unable to connect to authentication server. Please check backend.'
+            : 'Invalid email or password. Please try again.');
         this.errorMessage = msg;
         this.toast.error(msg);
       },

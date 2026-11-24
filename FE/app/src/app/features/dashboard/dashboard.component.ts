@@ -1,15 +1,28 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
-import { MockDataService } from '../../core/services/mock-data.service';
-import { ToastService } from '../../core/services/toast.service';
+import { Subscription } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
-import { PosSaleTransaction } from '../../core/models/inventory.models';
+import { DashboardService } from '../../core/services/dashboard.service';
+import { SalesService } from '../../core/services/sales.service';
+import { PaymentsService } from '../../core/services/payments.service';
+import { PosService } from '../../core/services/pos.service';
+import { NotificationsService, LiveAlertsSnapshot } from '../../core/services/notifications.service';
+import { ToastService } from '../../core/services/toast.service';
+import {
+  AdminDashboardData,
+  DailySalesTrend,
+  ShopkeeperDashboardData,
+} from '../../core/models/reports.models';
 
-export interface ChartPoint {
-  label: string;
-  sales: number;
-  cost: number;
+export interface TelemetryBarPoint {
+  date: string;
+  shortLabel: string;
+  revenue: number;
   profit: number;
+  transactionsCount: number;
+  marginPct: number;
+  revHeightPct: number;
+  profitHeightPct: number;
 }
 
 @Component({
@@ -17,70 +30,238 @@ export interface ChartPoint {
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
 })
-export class DashboardComponent implements OnInit {
-  selectedPeriod: 'today' | 'week' | 'month' = 'today';
-  recentSales: PosSaleTransaction[] = [];
-  selectedReceiptSale: PosSaleTransaction | null = null;
-  showReceiptModal = false;
+export class DashboardComponent implements OnInit, OnDestroy {
+  isLoading = true;
+  isAdmin = false;
+  activeActivityTab: 'sales' | 'purchases' | 'receipts' | 'returns' = 'sales';
 
-  readonly chartData: ChartPoint[] = [
-    { label: '09:00', sales: 1250, cost: 890, profit: 360 },
-    { label: '11:00', sales: 3420, cost: 2310, profit: 1110 },
-    { label: '13:00', sales: 2180, cost: 1450, profit: 730 },
-    { label: '15:00', sales: 4890, cost: 3200, profit: 1690 },
-    { label: '17:00', sales: 3080, cost: 2100, profit: 980 },
-    { label: '19:00', sales: 1800, cost: 1150, profit: 650 },
-  ];
+  adminData: AdminDashboardData | null = null;
+  shopkeeperData: ShopkeeperDashboardData | null = null;
 
-  readonly brandShare = [
-    { brand: 'Apple', percentage: 48, units: 68, color: '#2563eb' },
-    { brand: 'Samsung', percentage: 32, units: 45, color: '#0ea5e9' },
-    { brand: 'Google', percentage: 12, units: 17, color: '#10b981' },
-    { brand: 'Xiaomi & Others', percentage: 8, units: 12, color: '#8b5cf6' },
-  ];
+  chartPoints: TelemetryBarPoint[] = [];
+  chartMaxValue = 100;
+  selectedDayIndex = -1;
 
-  readonly lowStockItems = [
-    { name: 'Baseus 20,000mAh 65W Power Bank', sku: 'BAS-PB-20K-65W', stock: 4, min: 8, category: 'Power Banks' },
-    { name: 'Samsung 45W Fast Charger', sku: 'SAM-PWR-45W', stock: 5, min: 12, category: 'Chargers' },
-    { name: 'iPhone 15 Pro MagSafe Silicone Case', sku: 'CASE-IP15P-MID', stock: 8, min: 10, category: 'Cases' },
-    { name: 'Google Pixel 8 Pro Bay Blue (128GB)', sku: 'PIX-8P-BLU', stock: 3, min: 5, category: 'Smartphones' },
-  ];
+  alertsState: LiveAlertsSnapshot = {
+    pendingDiscounts: [],
+    pendingCreditOverrides: [],
+    lowStockAccessories: [],
+    alerts: [],
+    totalCount: 0,
+    loading: false,
+    lastUpdated: null,
+  };
+  reviewingId: string | null = null;
+  lastRefreshed = new Date();
+
+  private readonly sub = new Subscription();
 
   constructor(
     public readonly auth: AuthService,
-    private readonly mockData: MockDataService,
+    private readonly dashboardService: DashboardService,
+    private readonly salesService: SalesService,
+    private readonly paymentsService: PaymentsService,
+    private readonly posService: PosService,
+    private readonly notifications: NotificationsService,
     private readonly toast: ToastService,
     private readonly router: Router
   ) {}
 
   ngOnInit(): void {
-    this.mockData.sales$.subscribe((sales) => {
-      this.recentSales = sales.slice(0, 5);
+    this.sub.add(
+      this.notifications.state$.subscribe((snap) => {
+        this.alertsState = snap;
+      })
+    );
+
+    this.sub.add(
+      this.auth.currentUser$.subscribe((user) => {
+        if (user) {
+          this.isAdmin = user.role === 'SHOP_ADMIN';
+          this.loadDashboardData();
+        }
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.sub.unsubscribe();
+  }
+
+  get greetingLabel(): string {
+    const hr = new Date().getHours();
+    if (hr < 12) return 'Good morning';
+    if (hr < 18) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  get selectedDayPoint(): TelemetryBarPoint | null {
+    if (this.chartPoints.length === 0) return null;
+    if (this.selectedDayIndex >= 0 && this.selectedDayIndex < this.chartPoints.length) {
+      return this.chartPoints[this.selectedDayIndex];
+    }
+    return this.chartPoints[this.chartPoints.length - 1];
+  }
+
+  get topProductMaxRevenue(): number {
+    if (!this.adminData?.topSellingProducts?.length) return 1;
+    return Math.max(1, ...this.adminData.topSellingProducts.map((p) => p.totalRevenue || 0));
+  }
+
+  get pendingApprovalsCount(): number {
+    return (
+      this.alertsState.pendingDiscounts.length +
+      this.alertsState.pendingCreditOverrides.length
+    );
+  }
+
+  get cashierSharePct(): number {
+    if (!this.shopkeeperData || this.shopkeeperData.todayRegisterSales <= 0) return 0;
+    return Math.min(
+      100,
+      Math.round((this.shopkeeperData.myTodaySalesRevenue / this.shopkeeperData.todayRegisterSales) * 100)
+    );
+  }
+
+  loadDashboardData(): void {
+    this.isLoading = true;
+    this.notifications.refresh();
+
+    if (this.isAdmin) {
+      this.dashboardService.getAdminDashboard().subscribe({
+        next: (res) => {
+          this.adminData = res.data;
+          this.buildChartSeries(res.data.dailyTrends || []);
+          this.lastRefreshed = new Date();
+          this.isLoading = false;
+        },
+        error: (err) => {
+          this.toast.error('Dashboard Error', err.message || 'Failed to load admin analytics');
+          this.isLoading = false;
+        },
+      });
+    } else {
+      this.dashboardService.getShopkeeperDashboard().subscribe({
+        next: (res) => {
+          this.shopkeeperData = res.data;
+          this.lastRefreshed = new Date();
+          this.isLoading = false;
+        },
+        error: (err) => {
+          this.toast.error('Dashboard Error', err.message || 'Failed to load shopkeeper metrics');
+          this.isLoading = false;
+        },
+      });
+    }
+  }
+
+  private buildChartSeries(trends: DailySalesTrend[]): void {
+    if (!trends.length) {
+      this.chartPoints = [];
+      this.chartMaxValue = 100;
+      this.selectedDayIndex = -1;
+      return;
+    }
+
+    const rawMax = Math.max(
+      ...trends.map((d) => Math.max(d.revenue || 0, d.profit || 0)),
+      1
+    );
+    // Clean rounded ceiling for readable gridlines
+    const magnitude = Math.pow(10, Math.floor(Math.log10(rawMax)));
+    this.chartMaxValue = Math.ceil((rawMax * 1.12) / magnitude) * magnitude;
+
+    this.chartPoints = trends.map((d) => {
+      const rev = Math.max(0, d.revenue || 0);
+      const prof = Math.max(0, d.profit || 0);
+      const marginPct = rev > 0 ? Math.round((prof / rev) * 1000) / 10 : 0;
+      const parts = String(d.date || '').split('-');
+      const shortLabel = parts.length === 3 ? `${parts[1]}/${parts[2]}` : d.date;
+      return {
+        date: d.date,
+        shortLabel,
+        revenue: rev,
+        profit: prof,
+        transactionsCount: d.transactionsCount || 0,
+        marginPct,
+        revHeightPct: Math.max(rev > 0 ? 4 : 0, Math.min(100, (rev / this.chartMaxValue) * 100)),
+        profitHeightPct: Math.max(prof > 0 ? 3 : 0, Math.min(100, (prof / this.chartMaxValue) * 100)),
+      };
+    });
+
+    this.selectedDayIndex = this.chartPoints.length - 1;
+  }
+
+  selectDay(index: number): void {
+    this.selectedDayIndex = index;
+  }
+
+  setActivityTab(tab: 'sales' | 'purchases' | 'receipts' | 'returns'): void {
+    this.activeActivityTab = tab;
+  }
+
+  approveOrRejectDiscount(id: string, productName: string, action: 'APPROVE' | 'REJECT'): void {
+    this.reviewingId = id;
+    this.posService.reviewDiscount(id, action).subscribe({
+      next: () => {
+        this.reviewingId = null;
+        this.toast.success(
+          action === 'APPROVE' ? 'Discount Approved' : 'Discount Rejected',
+          `${productName} request updated.`
+        );
+        this.notifications.refresh();
+      },
+      error: (err) => {
+        this.reviewingId = null;
+        this.toast.error('Review Failed', err?.error?.message || 'Could not update discount.');
+      },
     });
   }
 
-  setPeriod(period: 'today' | 'week' | 'month'): void {
-    this.selectedPeriod = period;
-    this.toast.info('Filter Applied', `Dashboard metrics updated for ${period.toUpperCase()}.`);
+  approveOrRejectCredit(id: string, customerName: string, action: 'APPROVE' | 'REJECT'): void {
+    this.reviewingId = id;
+    this.posService.reviewCreditOverride(id, action).subscribe({
+      next: () => {
+        this.reviewingId = null;
+        this.toast.success(
+          action === 'APPROVE' ? 'Credit Override Authorized' : 'Credit Override Declined',
+          `${customerName} credit request updated.`
+        );
+        this.notifications.refresh();
+      },
+      error: (err) => {
+        this.reviewingId = null;
+        this.toast.error('Review Failed', err?.error?.message || 'Could not update override.');
+      },
+    });
   }
 
-  quickReorder(item: { name: string; sku: string }): void {
-    this.toast.success('Purchase Reorder Created', `Draft purchase order generated for ${item.name} (${item.sku}).`);
+  downloadInvoicePdf(saleId: string, invoiceNo: string): void {
+    this.salesService.downloadInvoicePdf(saleId).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${invoiceNo}.pdf`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: () => this.toast.error('Download Failed', 'Unable to generate invoice PDF.'),
+    });
   }
 
-  viewReceipt(sale: PosSaleTransaction): void {
-    this.selectedReceiptSale = sale;
-    this.showReceiptModal = true;
-  }
-
-  closeReceipt(): void {
-    this.showReceiptModal = false;
-    this.selectedReceiptSale = null;
-  }
-
-  printReceipt(): void {
-    window.print();
-    this.toast.info('Printing', 'Sent receipt to thermal slip printer.');
+  downloadReceiptPdf(receiptId: string, receiptNo: string): void {
+    this.paymentsService.downloadReceiptPdf(receiptId).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${receiptNo}.pdf`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: () => this.toast.error('Download Failed', 'Unable to generate receipt PDF.'),
+    });
   }
 
   goToPos(): void {
@@ -89,5 +270,25 @@ export class DashboardComponent implements OnInit {
 
   goToPhones(): void {
     this.router.navigate(['/inventory/phones']);
+  }
+
+  goToAccessories(): void {
+    this.router.navigate(['/inventory/accessories']);
+  }
+
+  goToReports(): void {
+    this.router.navigate(['/reports']);
+  }
+
+  goToPurchases(): void {
+    this.router.navigate(['/inventory/purchases']);
+  }
+
+  goToCustomers(): void {
+    this.router.navigate(['/customers']);
+  }
+
+  goToReturns(): void {
+    this.router.navigate(['/returns']);
   }
 }

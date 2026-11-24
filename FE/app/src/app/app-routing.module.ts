@@ -6,11 +6,11 @@ import { InventoryComponent } from './features/inventory/inventory.component';
 import { CustomersComponent } from './features/customers/customers.component';
 import { ReportsComponent } from './features/reports/reports.component';
 import { OperationsComponent } from './features/operations/operations.component';
-import { FoundationComponent } from './features/foundation/foundation.component';
 import { LoginComponent } from './features/auth/login/login.component';
 import { RegisterComponent } from './features/auth/register/register.component';
 import { AuthGuard } from './core/guards/auth.guard';
 import { GuestGuard } from './core/guards/guest.guard';
+import { InventoryGuard } from './core/guards/inventory.guard';
 
 const routes: Routes = [
   {
@@ -44,14 +44,16 @@ const routes: Routes = [
   },
   {
     path: 'inventory',
-    component: InventoryComponent,
-    canActivate: [AuthGuard],
-    title: 'Hardware & Accessories Inventory',
+    canActivate: [AuthGuard, InventoryGuard],
     children: [
-      { path: 'phones', component: InventoryComponent, title: 'Mobile Phones Inventory' },
-      { path: 'accessories', component: InventoryComponent, title: 'Accessories Catalog' },
-      { path: 'purchases', component: InventoryComponent, title: 'Stock Inward & Purchases' },
-      { path: 'suppliers', component: InventoryComponent, title: 'Hardware Suppliers' },
+      { path: '', pathMatch: 'full', redirectTo: 'overview' },
+      { path: 'overview', component: InventoryComponent, title: 'Overview & Valuation — ApexCellular' },
+      { path: 'phones', component: InventoryComponent, title: 'Mobile Phones Inventory — ApexCellular' },
+      { path: 'accessories', component: InventoryComponent, title: 'Accessories Catalog — ApexCellular' },
+      { path: 'purchases', component: InventoryComponent, title: 'Stock Inward & Purchases — ApexCellular' },
+      { path: 'suppliers', component: InventoryComponent, title: 'Hardware Suppliers — ApexCellular' },
+      { path: 'adjustments', component: InventoryComponent, title: 'Stock Adjustments & Audit Logs — ApexCellular' },
+      { path: 'stock-takes', component: InventoryComponent, title: 'Physical Stock Audits — ApexCellular' },
     ],
   },
   {
@@ -85,12 +87,6 @@ const routes: Routes = [
   {
     path: 'settings',
     loadChildren: () => import('./features/settings/settings.module').then((m) => m.SettingsModule),
-  },
-  {
-    path: 'system',
-    component: FoundationComponent,
-    canActivate: [AuthGuard],
-    title: 'System & API Health',
   },
   {
     path: '**',

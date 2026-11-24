@@ -1,171 +1,454 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { ReturnsService } from '../../core/services/returns.service';
+import { WarrantyService } from '../../core/services/warranty.service';
+import { SalesService } from '../../core/services/sales.service';
+import { PosService } from '../../core/services/pos.service';
 import { ToastService } from '../../core/services/toast.service';
+import { SaleDetails, ReturnRecord, WarrantyClaim, PosProductItem } from '../../core/models/pos.models';
 
 @Component({
   selector: 'app-operations',
-  template: `
-    <div class="container-fluid px-3 px-lg-4 py-4" style="max-inline-size: 1400px;">
-      <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
-        <div>
-          <div class="d-flex align-items-center gap-2 mb-1">
-            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold px-2 py-1">
-              Store Operations
-            </span>
-            <span class="text-muted small">&middot; Downtown Flagship #01</span>
-          </div>
-          <h1 class="h3 fw-bold text-dark mb-0">{{ pageTitle }}</h1>
-        </div>
-
-        <button type="button" class="btn-app btn-app-secondary" (click)="onAction()">
-          <i class="bi bi-clock-history"></i>
-          <span>Activity Log</span>
-        </button>
-      </div>
-
-      <!-- Content based on mode -->
-      <div *ngIf="mode === 'returns'" class="app-card mb-4">
-        <div class="app-card-header">
-          <h2 class="app-card-title">
-            <i class="bi bi-arrow-left-right text-primary"></i>
-            <span>Returns &amp; Exchange Processing</span>
-          </h2>
-          <span class="badge bg-light text-muted border">Policy: 14 Days</span>
-        </div>
-        <div class="app-card-body p-4">
-          <p class="text-secondary small mb-3">
-            Scan invoice barcode or enter the customer's phone number to retrieve original POS sale record and verify hardware IMEI conditions.
-          </p>
-
-          <div class="row g-3 mb-4">
-            <div class="col-12 col-md-6">
-              <label for="invScan" class="app-form-label">Scan Invoice # or Serial Barcode</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light"><i class="bi bi-upc-scan"></i></span>
-                <input id="invScan" type="text" class="app-input font-monospace" placeholder="e.g. INV-2026-0841" />
-                <button type="button" class="btn btn-primary" (click)="toast.info('Invoice Lookup', 'Retrieved Invoice #INV-2026-0841. Eligible for replacement.')">
-                  Search
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="p-3 rounded bg-light border">
-            <h3 class="h6 fw-bold text-dark mb-2">Standard Return Guidelines</h3>
-            <ul class="small text-secondary mb-0 ps-3">
-              <li>Device condition grade must match original sale condition (Grade A or New).</li>
-              <li>iCloud / Google FRP account locks must be completely removed by customer before exchange.</li>
-              <li>Battery health check required for pre-owned exchanges.</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div *ngIf="mode === 'warranty'" class="app-card mb-4">
-        <div class="app-card-header">
-          <h2 class="app-card-title">
-            <i class="bi bi-shield-check text-success"></i>
-            <span>Warranty &amp; IMEI Repair Tracking</span>
-          </h2>
-          <span class="badge bg-success-subtle text-success border">Store Coverage: 90 Days</span>
-        </div>
-        <div class="app-card-body p-4">
-          <div class="row g-3 mb-4">
-            <div class="col-12 col-md-6">
-              <label for="imeiCheck" class="app-form-label">Enter IMEI to Verify Coverage</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light"><i class="bi bi-phone"></i></span>
-                <input id="imeiCheck" type="text" class="app-input font-monospace" placeholder="354892019482711" />
-                <button type="button" class="btn btn-success" (click)="toast.success('Warranty Active', 'IMEI 354892019482711 has 82 days remaining store warranty.')">
-                  Verify IMEI
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="p-3 rounded bg-light border">
-            <div class="fw-semibold text-dark small mb-1">Active Store Protection Policy</div>
-            <p class="small text-secondary mb-0">
-              Covers motherboard failure, camera sensors, and battery degradation below 80%. Accidental liquid or screen impact damage is excluded under standard warranty.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div *ngIf="mode === 'settings'" class="app-card mb-4">
-        <div class="app-card-header">
-          <h2 class="app-card-title">
-            <i class="bi bi-sliders2 text-primary"></i>
-            <span>Store Location &amp; POS Register Settings</span>
-          </h2>
-          <span class="badge bg-light text-muted border">Tenant ID: SHOP-DOWNTOWN-01</span>
-        </div>
-        <div class="app-card-body p-4">
-          <div class="row g-3">
-            <div class="col-12 col-md-6">
-              <label for="sName" class="app-form-label">Store Public Name</label>
-              <input id="sName" type="text" class="app-input" value="Downtown Flagship Store" />
-            </div>
-
-            <div class="col-12 col-md-6">
-              <label for="sTax" class="app-form-label">Default Sales Tax / VAT Rate (%)</label>
-              <input id="sTax" type="number" class="app-input font-monospace" value="5.0" />
-            </div>
-
-            <div class="col-12 col-md-6">
-              <label for="sPrinter" class="app-form-label">Receipt Printer Driver</label>
-              <select id="sPrinter" class="app-input">
-                <option selected>Epson TM-T88VI (80mm Thermal)</option>
-                <option>Star Micronics TSP143III</option>
-                <option>Standard A4 Laser/Inkjet</option>
-              </select>
-            </div>
-
-            <div class="col-12 col-md-6">
-              <label for="sCurrency" class="app-form-label">Operating Currency</label>
-              <select id="sCurrency" class="app-input">
-                <option selected>USD ($) &middot; United States Dollar</option>
-                <option>EUR (€) &middot; Euro</option>
-                <option>GBP (£) &middot; British Pound</option>
-                <option>CAD ($) &middot; Canadian Dollar</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="d-flex justify-content-end gap-2 pt-4 border-top mt-4">
-            <button type="button" class="btn-app btn-app-primary" (click)="toast.success('Configuration Saved', 'Store operational preferences updated.')">
-              Save Settings
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `,
+  templateUrl: './operations.component.html',
+  styleUrls: ['./operations.component.scss'],
 })
-export class OperationsComponent implements OnInit {
+export class OperationsComponent implements OnInit, OnDestroy {
   mode: 'returns' | 'warranty' | 'settings' = 'returns';
   pageTitle = 'Returns & Exchanges';
+  private readonly sub = new Subscription();
+
+  // Returns & Exchanges State
+  invoiceSearchTerm = '';
+  searchedSale: SaleDetails | null = null;
+  isLoadingSale = false;
+  isLoadingReturns = false;
+  returnReason = '';
+  returnItemsSelection: { [saleItemId: string]: { selected: boolean; quantity: number; refundAmount: number; restore: boolean } } = {};
+  isExchangeMode = false;
+  replacementCatalog: PosProductItem[] = [];
+  selectedReplacementItem: PosProductItem | null = null;
+  replacementQuantity = 1;
+  replacementActualPrice = 0;
+  exchangePaymentMethod = 'CASH';
+  isProcessingReturn = false;
+  returnsHistory: ReturnRecord[] = [];
+  recentInvoices: Array<{ id: string; invoiceNo: string; customerName: string; totalAmount: number }> = [];
+
+  // Warranty State
+  warrantySearchTerm = '';
+  claimStatusFilter: 'ALL' | 'OPEN' | 'REPAIR' | 'DONE' = 'ALL';
+  warrantiesList: any[] = [];
+  warrantyClaims: WarrantyClaim[] = [];
+  isLoadingWarranty = false;
+  isLoadingClaims = false;
+  showNewClaimModal = false;
+  selectedWarrantyRecord: any = null;
+  claimProblemDescription = '';
+  showUpdateClaimModal = false;
+  activeClaim: WarrantyClaim | null = null;
+  updateClaimStatus = 'UNDER_REPAIR';
+  updateRepairNotes = '';
+  updatePartsUsed = '';
+  updateLaborCost = 0;
+  updateCustomerCharge = 0;
+  updateReplacementImei = '';
+  isProcessingClaim = false;
 
   constructor(
     private readonly route: ActivatedRoute,
+    private readonly returnsService: ReturnsService,
+    private readonly warrantyService: WarrantyService,
+    private readonly salesService: SalesService,
+    private readonly posService: PosService,
     public readonly toast: ToastService
   ) {}
 
   ngOnInit(): void {
-    const path = this.route.snapshot.url[0]?.path;
-    if (path === 'warranty') {
+    const url = this.route.snapshot.url[0]?.path;
+    if (url === 'warranty') {
       this.mode = 'warranty';
-      this.pageTitle = 'Warranties & IMEI Repairs';
-    } else if (path === 'settings') {
-      this.mode = 'settings';
-      this.pageTitle = 'Store Configuration & Settings';
+      this.pageTitle = 'Warranty & Repair Claims';
+      this.loadWarranties();
+      this.loadWarrantyClaims();
     } else {
       this.mode = 'returns';
-      this.pageTitle = 'Returns & Exchanges';
+      this.pageTitle = 'Returns & Multi-Product Exchanges';
+      this.loadReturnsHistory();
+      this.loadRecentInvoices();
     }
   }
 
-  onAction(): void {
-    this.toast.info('Audit Log', 'Viewing recent audit events for this terminal.');
+  get totalRefundsDisbursed(): number {
+    return this.returnsHistory.reduce((sum, r) => sum + (r.totalRefundAmount || 0), 0);
+  }
+
+  get exchangesCount(): number {
+    return this.returnsHistory.filter((r) => r.returnType === 'EXCHANGE').length;
+  }
+
+  get activeWarrantiesCount(): number {
+    return this.warrantiesList.filter((w) => w.status === 'ACTIVE').length;
+  }
+
+  get openClaimsCount(): number {
+    return this.warrantyClaims.filter((c) => !['DELIVERED', 'CLOSED', 'REJECTED'].includes(c.status)).length;
+  }
+
+  get completedClaimsCount(): number {
+    return this.warrantyClaims.filter((c) => ['DELIVERED', 'CLOSED', 'REPAIRED'].includes(c.status)).length;
+  }
+
+  get filteredWarrantyClaims(): WarrantyClaim[] {
+    if (this.claimStatusFilter === 'ALL') return this.warrantyClaims;
+    if (this.claimStatusFilter === 'OPEN') {
+      return this.warrantyClaims.filter((c) => ['REGISTERED', 'UNDER_INSPECTION', 'APPROVED'].includes(c.status));
+    }
+    if (this.claimStatusFilter === 'REPAIR') {
+      return this.warrantyClaims.filter((c) => ['UNDER_REPAIR', 'SENT_TO_SUPPLIER', 'READY_FOR_COLLECTION'].includes(c.status));
+    }
+    return this.warrantyClaims.filter((c) => ['REPAIRED', 'DELIVERED', 'CLOSED', 'REJECTED'].includes(c.status));
+  }
+
+  getClaimStageIndex(status: string): number {
+    if (status === 'REGISTERED') return 1;
+    if (status === 'UNDER_INSPECTION' || status === 'APPROVED') return 2;
+    if (status === 'UNDER_REPAIR' || status === 'SENT_TO_SUPPLIER') return 3;
+    if (status === 'REPAIRED' || status === 'READY_FOR_COLLECTION') return 4;
+    if (status === 'DELIVERED' || status === 'CLOSED') return 5;
+    return 1;
+  }
+
+  loadRecentInvoices(): void {
+    this.sub.add(
+      this.salesService.getSales().subscribe({
+        next: (sales) => {
+          this.recentInvoices = sales.slice(0, 6).map((s) => ({
+            id: s.id,
+            invoiceNo: s.invoiceNo,
+            customerName: s.customerName || 'Walk-in',
+            totalAmount: s.totalAmount,
+          }));
+        },
+        error: () => {},
+      })
+    );
+  }
+
+  quickPickInvoice(invoiceNo: string): void {
+    this.invoiceSearchTerm = invoiceNo;
+    this.searchInvoice();
+  }
+
+  ngOnDestroy(): void {
+    this.sub.unsubscribe();
+  }
+
+  @HostListener('window:keydown.escape')
+  handleEscape(): void {
+    if (this.showNewClaimModal) {
+      this.showNewClaimModal = false;
+      return;
+    }
+    if (this.showUpdateClaimModal) {
+      this.showUpdateClaimModal = false;
+      return;
+    }
+  }
+
+  // --- Returns & Exchanges ---
+  loadReturnsHistory(): void {
+    this.isLoadingReturns = true;
+    this.sub.add(
+      this.returnsService.getReturns().subscribe({
+        next: (data) => {
+          this.returnsHistory = data;
+          this.isLoadingReturns = false;
+        },
+        error: () => {
+          this.isLoadingReturns = false;
+        },
+      })
+    );
+  }
+
+  searchInvoice(): void {
+    const query = this.invoiceSearchTerm.trim();
+    if (!query) return;
+
+    this.isLoadingSale = true;
+    this.searchedSale = null;
+    this.returnItemsSelection = {};
+
+    this.sub.add(
+      this.salesService.getSales({ search: query }).subscribe({
+        next: (sales) => {
+          if (sales.length === 0) {
+            this.isLoadingSale = false;
+            this.toast.warning(`No sale found matching "${query}"`);
+            return;
+          }
+
+          const saleSummary = sales[0];
+          this.sub.add(
+            this.salesService.getSaleById(saleSummary.id).subscribe({
+              next: (details) => {
+                this.searchedSale = details;
+                this.isLoadingSale = false;
+                // Initialize return selection map
+                for (const item of details.items) {
+                  this.returnItemsSelection[item.id] = {
+                    selected: false,
+                    quantity: item.quantity,
+                    refundAmount: item.actualPrice,
+                    restore: true,
+                  };
+                }
+              },
+              error: (err) => {
+                this.isLoadingSale = false;
+                this.toast.error('Failed to load sale line items: ' + (err.error?.message || err.message));
+              },
+            })
+          );
+        },
+        error: (err) => {
+          this.isLoadingSale = false;
+          this.toast.error('Search failed: ' + (err.error?.message || err.message));
+        },
+      })
+    );
+  }
+
+  get selectedReturnItemsCount(): number {
+    return Object.values(this.returnItemsSelection).filter((s) => s.selected).length;
+  }
+
+  get totalCalculatedRefund(): number {
+    let sum = 0;
+    for (const [id, s] of Object.entries(this.returnItemsSelection)) {
+      if (s.selected) {
+        sum += s.quantity * s.refundAmount;
+      }
+    }
+    return Math.round(sum * 100) / 100;
+  }
+
+  get exchangeDifference(): { amount: number; type: 'CUSTOMER_PAYS' | 'SHOP_REFUNDS' | 'EVEN' } {
+    if (!this.selectedReplacementItem) {
+      return { amount: 0, type: 'EVEN' };
+    }
+    const replacementTotal = this.replacementActualPrice * this.replacementQuantity;
+    const returnedTotal = this.totalCalculatedRefund;
+    const diff = Math.round((replacementTotal - returnedTotal) * 100) / 100;
+
+    if (diff > 0.001) return { amount: diff, type: 'CUSTOMER_PAYS' };
+    if (diff < -0.001) return { amount: Math.abs(diff), type: 'SHOP_REFUNDS' };
+    return { amount: 0, type: 'EVEN' };
+  }
+
+  toggleExchangeMode(): void {
+    this.isExchangeMode = !this.isExchangeMode;
+    if (this.isExchangeMode && this.replacementCatalog.length === 0) {
+      this.posService.searchProducts().subscribe({
+        next: (items) => (this.replacementCatalog = items),
+      });
+    }
+  }
+
+  selectReplacementProduct(prod: PosProductItem): void {
+    this.selectedReplacementItem = prod;
+    this.replacementActualPrice = prod.defaultPrice;
+    this.replacementQuantity = 1;
+  }
+
+  submitReturnOrExchange(): void {
+    if (!this.searchedSale) return;
+    if (this.selectedReturnItemsCount === 0) {
+      this.toast.warning('Please select at least one item to return');
+      return;
+    }
+    if (!this.returnReason || this.returnReason.trim().length < 3) {
+      this.toast.warning('A return reason is mandatory');
+      return;
+    }
+
+    const returnItemsPayload = Object.entries(this.returnItemsSelection)
+      .filter(([_, s]) => s.selected)
+      .map(([saleItemId, s]) => ({
+        saleItemId,
+        quantity: s.quantity,
+        unitRefundAmount: s.refundAmount,
+        restoreToInventory: s.restore,
+      }));
+
+    this.isProcessingReturn = true;
+
+    if (this.isExchangeMode) {
+      if (!this.selectedReplacementItem) {
+        this.toast.warning('Please select a replacement product from the catalog');
+        this.isProcessingReturn = false;
+        return;
+      }
+
+      const payload = {
+        returnPayload: {
+          saleId: this.searchedSale.sale.id,
+          returnType: 'EXCHANGE' as const,
+          reason: this.returnReason.trim(),
+          items: returnItemsPayload,
+        },
+        replacementItems: [
+          {
+            itemType: this.selectedReplacementItem.itemType,
+            productId: this.selectedReplacementItem.id,
+            quantity: this.replacementQuantity,
+            actualPrice: this.replacementActualPrice,
+          },
+        ],
+        paymentMethod: this.exchangePaymentMethod,
+      };
+
+      this.returnsService.processExchange(payload).subscribe({
+        next: (res) => {
+          this.isProcessingReturn = false;
+          this.toast.success(
+            `Exchange processed! Return: ${res.returnNo}, New Invoice: ${res.newInvoiceNo} (${res.differenceType}: $${res.differenceAmount})`
+          );
+          this.resetReturnForm();
+          this.loadReturnsHistory();
+        },
+        error: (err) => {
+          this.isProcessingReturn = false;
+          this.toast.error('Exchange failed: ' + (err.error?.message || err.message));
+        },
+      });
+    } else {
+      // Direct Refund
+      const payload = {
+        saleId: this.searchedSale.sale.id,
+        returnType: 'REFUND' as const,
+        reason: this.returnReason.trim(),
+        items: returnItemsPayload,
+      };
+
+      this.returnsService.processReturn(payload).subscribe({
+        next: (res) => {
+          this.isProcessingReturn = false;
+          this.toast.success(`Return processed! Return No: ${res.returnNo}. Total refunded: $${res.totalRefundAmount.toFixed(2)}`);
+          this.resetReturnForm();
+          this.loadReturnsHistory();
+        },
+        error: (err) => {
+          this.isProcessingReturn = false;
+          this.toast.error('Return failed: ' + (err.error?.message || err.message));
+        },
+      });
+    }
+  }
+
+  resetReturnForm(): void {
+    this.searchedSale = null;
+    this.invoiceSearchTerm = '';
+    this.returnReason = '';
+    this.returnItemsSelection = {};
+    this.isExchangeMode = false;
+    this.selectedReplacementItem = null;
+  }
+
+  // --- Warranty & Repairs ---
+  loadWarranties(): void {
+    this.isLoadingWarranty = true;
+    this.sub.add(
+      this.warrantyService.getWarranties(this.warrantySearchTerm).subscribe({
+        next: (data) => {
+          this.warrantiesList = data;
+          this.isLoadingWarranty = false;
+        },
+        error: () => (this.isLoadingWarranty = false),
+      })
+    );
+  }
+
+  loadWarrantyClaims(): void {
+    this.isLoadingClaims = true;
+    this.sub.add(
+      this.warrantyService.getClaims().subscribe({
+        next: (data) => {
+          this.warrantyClaims = data;
+          this.isLoadingClaims = false;
+        },
+        error: () => {
+          this.isLoadingClaims = false;
+        },
+      })
+    );
+  }
+
+  openRegisterClaim(warr: any): void {
+    this.selectedWarrantyRecord = warr;
+    this.claimProblemDescription = '';
+    this.showNewClaimModal = true;
+  }
+
+  submitNewClaim(): void {
+    if (!this.selectedWarrantyRecord) return;
+    if (!this.claimProblemDescription || this.claimProblemDescription.trim().length < 5) {
+      this.toast.warning('Please describe the reported defect or problem');
+      return;
+    }
+
+    this.isProcessingClaim = true;
+    this.warrantyService.createClaim(this.selectedWarrantyRecord.id, this.claimProblemDescription.trim()).subscribe({
+      next: (claim) => {
+        this.isProcessingClaim = false;
+        this.showNewClaimModal = false;
+        this.toast.success(`Claim ${claim.claimRef} registered! Device marked UNDER_REPAIR.`);
+        this.loadWarrantyClaims();
+        this.loadWarranties();
+      },
+      error: (err) => {
+        this.isProcessingClaim = false;
+        this.toast.error('Failed to register claim: ' + (err.error?.message || err.message));
+      },
+    });
+  }
+
+  openUpdateClaim(claim: WarrantyClaim): void {
+    this.activeClaim = claim;
+    this.updateClaimStatus = claim.status;
+    this.updateRepairNotes = claim.repairNotes || '';
+    this.updatePartsUsed = claim.partsUsed || '';
+    this.updateLaborCost = claim.laborCost || 0;
+    this.updateCustomerCharge = claim.customerCharge || 0;
+    this.updateReplacementImei = claim.replacementImei || '';
+    this.showUpdateClaimModal = true;
+  }
+
+  saveClaimStatus(): void {
+    if (!this.activeClaim) return;
+
+    this.isProcessingClaim = true;
+    this.warrantyService
+      .updateClaim(this.activeClaim.id, {
+        status: this.updateClaimStatus,
+        repairNotes: this.updateRepairNotes,
+        partsUsed: this.updatePartsUsed,
+        laborCost: Number(this.updateLaborCost) || 0,
+        customerCharge: Number(this.updateCustomerCharge) || 0,
+        replacementImei: this.updateReplacementImei,
+      })
+      .subscribe({
+        next: (updated) => {
+          this.isProcessingClaim = false;
+          this.showUpdateClaimModal = false;
+          this.toast.success(`Claim ${this.activeClaim?.claimRef} updated to ${updated.status}`);
+          this.loadWarrantyClaims();
+        },
+        error: (err) => {
+          this.isProcessingClaim = false;
+          this.toast.error('Failed to update claim: ' + (err.error?.message || err.message));
+        },
+      });
   }
 }

@@ -1,0 +1,1162 @@
+<div class="reports-page container-fluid px-3 px-lg-4 py-4" style="max-inline-size: 1620px;">
+  <!-- Header Bar -->
+  <div class="page-hero">
+    <div>
+      <span class="page-eyebrow"><i class="bi bi-bar-chart-line-fill"></i> Business Intelligence &middot; {{ auth.currentShop?.name || 'Store' }}</span>
+      <h1 class="page-title">Financial Reporting &amp; Analytics</h1>
+      <p class="page-subtitle">FIFO gross margin telemetry, inventory valuation, debtor aging, and audit-safe CSV/A4 PDF exports.</p>
+    </div>
+
+    <!-- Export Action Buttons -->
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <button
+        type="button"
+        class="btn-app btn-app-secondary btn-app-sm"
+        [disabled]="isExporting || isLoading"
+        (click)="exportCsv()"
+      >
+        <i class="bi bi-file-earmark-spreadsheet text-success"></i>
+        <span>Export CSV</span>
+      </button>
+
+      <button
+        type="button"
+        class="btn-app btn-app-primary btn-app-sm"
+        [disabled]="isExporting || isLoading"
+        (click)="exportPdf()"
+      >
+        <i class="bi bi-file-earmark-pdf"></i>
+        <span>Export Landscape PDF</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <ul class="nav nav-pills nav-fill bg-white p-1 rounded border shadow-xs mb-4" role="tablist">
+    <li class="nav-item">
+      <button
+        type="button"
+        class="nav-link text-start"
+        [ngClass]="activeTab === 'sales' ? 'active' : ''"
+        (click)="setTab('sales')"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-receipt fs-5 flex-shrink-0"></i>
+          <div>
+            <div class="fw-semibold tab-title">Sales Transactions</div>
+            <div class="tab-desc small d-none d-xl-block">Customer invoices &amp; revenue</div>
+          </div>
+        </div>
+      </button>
+    </li>
+    <li *ngIf="isAdmin" class="nav-item">
+      <button
+        type="button"
+        class="nav-link text-start"
+        [ngClass]="activeTab === 'profit' ? 'active' : ''"
+        (click)="setTab('profit')"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-graph-up-arrow fs-5 flex-shrink-0"></i>
+          <div>
+            <div class="fw-semibold tab-title">Profit &amp; Margins</div>
+            <div class="tab-desc small d-none d-xl-block">Gross profit &amp; margin analytics</div>
+          </div>
+        </div>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button
+        type="button"
+        class="nav-link text-start"
+        [ngClass]="activeTab === 'inventory' ? 'active' : ''"
+        (click)="setTab('inventory')"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-boxes fs-5 flex-shrink-0"></i>
+          <div>
+            <div class="fw-semibold tab-title">Stock Valuation</div>
+            <div class="tab-desc small d-none d-xl-block">Serialized devices &amp; FIFO assets</div>
+          </div>
+        </div>
+      </button>
+    </li>
+    <li *ngIf="isAdmin" class="nav-item">
+      <button
+        type="button"
+        class="nav-link text-start"
+        [ngClass]="activeTab === 'purchases' ? 'active' : ''"
+        (click)="setTab('purchases')"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-truck fs-5 flex-shrink-0"></i>
+          <div>
+            <div class="fw-semibold tab-title">Purchases &amp; POs</div>
+            <div class="tab-desc small d-none d-xl-block">Vendor orders &amp; inward costs</div>
+          </div>
+        </div>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button
+        type="button"
+        class="nav-link text-start"
+        [ngClass]="activeTab === 'customers' ? 'active' : ''"
+        (click)="setTab('customers')"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-people fs-5 flex-shrink-0"></i>
+          <div>
+            <div class="fw-semibold tab-title">Debtors &amp; Credit</div>
+            <div class="tab-desc small d-none d-xl-block">Customer debt &amp; payment receipts</div>
+          </div>
+        </div>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button
+        type="button"
+        class="nav-link text-start"
+        [ngClass]="activeTab === 'returns-warranty' ? 'active' : ''"
+        (click)="setTab('returns-warranty')"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-shield-check fs-5 flex-shrink-0"></i>
+          <div>
+            <div class="fw-semibold tab-title">Returns &amp; Warranty</div>
+            <div class="tab-desc small d-none d-xl-block">Merchandise refunds &amp; repair claims</div>
+          </div>
+        </div>
+      </button>
+    </li>
+  </ul>
+
+  <!-- Standard Date Range & Filter Bar (unless inventory/customers tab) -->
+  <div *ngIf="activeTab !== 'inventory' && activeTab !== 'customers'" class="app-card p-3 mb-4">
+    <div class="row g-2 align-items-center">
+      <!-- Quick Range Buttons -->
+      <div class="col-12 col-xl-7 d-flex flex-wrap gap-1">
+        <button
+          type="button"
+          class="btn btn-sm"
+          [ngClass]="selectedRange === 'today' ? 'btn-primary' : 'btn-light border'"
+          (click)="setRange('today')"
+        >
+          Today
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [ngClass]="selectedRange === 'yesterday' ? 'btn-primary' : 'btn-light border'"
+          (click)="setRange('yesterday')"
+        >
+          Yesterday
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [ngClass]="selectedRange === 'last7days' ? 'btn-primary' : 'btn-light border'"
+          (click)="setRange('last7days')"
+        >
+          Last 7 Days
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [ngClass]="selectedRange === 'last30days' ? 'btn-primary' : 'btn-light border'"
+          (click)="setRange('last30days')"
+        >
+          Last 30 Days
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [ngClass]="selectedRange === 'current_month' ? 'btn-primary' : 'btn-light border'"
+          (click)="setRange('current_month')"
+        >
+          This Month
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [ngClass]="selectedRange === 'previous_month' ? 'btn-primary' : 'btn-light border'"
+          (click)="setRange('previous_month')"
+        >
+          Last Month
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [ngClass]="selectedRange === 'current_year' ? 'btn-primary' : 'btn-light border'"
+          (click)="setRange('current_year')"
+        >
+          This Year
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [ngClass]="selectedRange === 'custom' ? 'btn-primary' : 'btn-light border'"
+          (click)="setRange('custom')"
+        >
+          Custom
+        </button>
+      </div>
+
+      <!-- Custom Date Inputs (when custom selected) -->
+      <div *ngIf="selectedRange === 'custom'" class="col-12 col-md-7 col-xl-4 d-flex align-items-center gap-1">
+        <input
+          type="date"
+          class="form-control form-control-sm"
+          [(ngModel)]="dateFrom"
+          (change)="loadActiveReport()"
+          aria-label="Report start date"
+        />
+        <span class="text-muted small">to</span>
+        <input
+          type="date"
+          class="form-control form-control-sm"
+          [(ngModel)]="dateTo"
+          (change)="loadActiveReport()"
+          aria-label="Report end date"
+        />
+        <button type="button" class="btn btn-sm btn-primary text-nowrap" (click)="loadActiveReport()">Apply</button>
+      </div>
+
+      <!-- Product Filter -->
+      <div class="col-12 col-md-4 col-xl-2 ms-auto">
+        <select class="form-select form-select-sm" [(ngModel)]="productType" (change)="loadActiveReport()">
+          <option value="">All Product Types</option>
+          <option value="PHONE">Mobile Phones</option>
+          <option value="ACCESSORY">Accessories</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State Indicator -->
+  <div *ngIf="isLoading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Calculating report figures...</span>
+    </div>
+    <div class="text-muted small mt-2">Computing multi-tenant financial data from database...</div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 1: SALES TRANSACTIONS                                                -->
+  <!-- ========================================================================= -->
+  <div *ngIf="!isLoading && activeTab === 'sales' && salesData">
+    <!-- Summary KPI Row -->
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Total Sales Revenue</span>
+            <div class="metric-icon-box bg-primary-subtle text-primary">
+              <i class="bi bi-currency-dollar"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">${{ salesData.summary.totalSales | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-dark fw-semibold">{{ salesData.summary.totalTransactions }} transactions</span>
+            <span class="text-muted">&middot; Disc: ${{ salesData.summary.totalDiscounts | number: '1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Cash Collected</span>
+            <div class="metric-icon-box bg-success-subtle text-success">
+              <i class="bi bi-cash"></i>
+            </div>
+          </div>
+          <div class="metric-value text-success font-monospace">${{ salesData.summary.totalCollected | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">Settled immediately at POS</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Customer Receivables Due</span>
+            <div class="metric-icon-box bg-danger-subtle text-danger">
+              <i class="bi bi-wallet2"></i>
+            </div>
+          </div>
+          <div class="metric-value text-danger font-monospace">${{ salesData.summary.totalOutstanding | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">Credit sales balance pending</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">{{ isAdmin ? 'Gross Profit' : 'Tax Collected' }}</span>
+            <div class="metric-icon-box" [ngClass]="isAdmin ? 'bg-info-subtle text-info' : 'bg-secondary-subtle text-secondary'">
+              <i class="bi" [ngClass]="isAdmin ? 'bi-graph-up-arrow' : 'bi-receipt-cutoff'"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace" [ngClass]="isAdmin ? 'text-info' : 'text-dark'">
+            {{ isAdmin ? ('$' + (salesData.summary.totalGrossProfit | number: '1.2-2')) : ('$' + (salesData.summary.totalTax | number: '1.2-2')) }}
+          </div>
+          <div class="metric-footer">
+            <span *ngIf="isAdmin" class="text-muted">Net sales margin</span>
+            <span *ngIf="!isAdmin" class="text-muted">Sales tax liability</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Breakdown Visual Mix -->
+    <div *ngIf="salesData.paymentBreakdown.length > 0" class="app-card p-3 mb-4">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+        <span class="fw-bold text-secondary small text-uppercase" style="letter-spacing: 0.05em;">Payment Tender Distribution</span>
+        <div class="d-flex flex-wrap gap-2">
+          <span *ngFor="let p of salesData.paymentBreakdown" class="badge bg-light text-dark border px-2 py-1 font-monospace">
+            <strong>{{ p.paymentMethod }}:</strong> ${{ p.total | number: '1.2-2' }} ({{ (p.total / totalPaymentBreakdownVolume) * 100 | number:'1.0-0' }}%)
+          </span>
+        </div>
+      </div>
+      <div class="progress rounded-pill" style="block-size: 8px;">
+        <div
+          *ngFor="let p of salesData.paymentBreakdown; let i = index"
+          class="progress-bar"
+          [ngClass]="i % 4 === 0 ? 'bg-primary' : (i % 4 === 1 ? 'bg-success' : (i % 4 === 2 ? 'bg-info' : 'bg-warning'))"
+          [style.width.%]="(p.total / totalPaymentBreakdownVolume) * 100"
+          [title]="p.paymentMethod + ': $' + (p.total | number:'1.2-2')"
+        ></div>
+      </div>
+    </div>
+
+    <!-- Sales Transactions Table -->
+    <section class="app-card" aria-label="Sales Data Table">
+      <div class="app-card-header d-flex justify-content-between align-items-center">
+        <h2 class="app-card-title">
+          <i class="bi bi-list-check text-primary"></i>
+          <span>Sales Invoices ({{ salesData.sales.length }}) &middot; {{ salesData.rangeLabel }}</span>
+        </h2>
+      </div>
+      <div class="app-card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Invoice #</th>
+                <th scope="col">Date</th>
+                <th scope="col">Customer</th>
+                <th scope="col">Items</th>
+                <th scope="col">Total ($)</th>
+                <th scope="col">Paid ($)</th>
+                <th scope="col">Balance Due ($)</th>
+                <th *ngIf="isAdmin" scope="col">Profit ($)</th>
+                <th scope="col">Status</th>
+                <th scope="col">Cashier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let s of salesData.sales">
+                <td class="font-monospace fw-bold text-primary">{{ s.invoiceNo }}</td>
+                <td class="text-muted small">{{ s.createdAt | date: 'mediumDate' }}</td>
+                <td>
+                  <div class="fw-semibold">{{ s.customerName || 'Walk-in Customer' }}</div>
+                  <div *ngIf="s.customerPhone" class="small text-muted font-monospace">{{ s.customerPhone }}</div>
+                </td>
+                <td class="text-center font-monospace">{{ s.itemCount }}</td>
+                <td class="font-monospace fw-semibold">${{ s.totalAmount | number: '1.2-2' }}</td>
+                <td class="font-monospace text-success">${{ s.amountPaid | number: '1.2-2' }}</td>
+                <td class="font-monospace" [ngClass]="s.balanceDue > 0 ? 'text-danger fw-bold' : 'text-muted'">
+                  ${{ s.balanceDue | number: '1.2-2' }}
+                </td>
+                <td *ngIf="isAdmin" class="font-monospace text-info fw-semibold">
+                  ${{ s.grossProfit | number: '1.2-2' }}
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="s.paymentStatus === 'PAID' ? 'bg-success-subtle text-success' : (s.paymentStatus === 'PARTIAL' ? 'bg-warning-subtle text-warning' : 'bg-danger-subtle text-danger')">
+                    {{ s.paymentStatus }}
+                  </span>
+                </td>
+                <td class="text-muted small">{{ s.shopkeeperName }}</td>
+              </tr>
+              <tr *ngIf="salesData.sales.length === 0">
+                <td [attr.colspan]="isAdmin ? 10 : 9" class="text-center py-4 text-muted">
+                  No sales found matching the selected period and criteria.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 2: PROFIT & MARGINS REPORT (SHOP_ADMIN ONLY)                          -->
+  <!-- ========================================================================= -->
+  <div *ngIf="!isLoading && activeTab === 'profit' && profitData && isAdmin">
+    <!-- Summary KPI Row -->
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Total Revenue</span>
+            <div class="metric-icon-box bg-primary-subtle text-primary">
+              <i class="bi bi-cash-coin"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">${{ profitData.summary.totalRevenue | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">{{ profitData.summary.totalUnitsSold }} units sold</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Cost of Goods Sold (COGS)</span>
+            <div class="metric-icon-box bg-secondary-subtle text-secondary">
+              <i class="bi bi-receipt"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">${{ profitData.summary.totalCogs | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">Phone cost + FIFO accessory batch cost</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Net Gross Profit</span>
+            <div class="metric-icon-box bg-success-subtle text-success">
+              <i class="bi bi-graph-up-arrow"></i>
+            </div>
+          </div>
+          <div class="metric-value text-success font-monospace">${{ profitData.summary.netGrossProfit | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-success fw-bold">{{ profitData.summary.profitMarginPct }}% Profit Margin</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Returns Deducted</span>
+            <div class="metric-icon-box bg-danger-subtle text-danger">
+              <i class="bi bi-arrow-counterclockwise"></i>
+            </div>
+          </div>
+          <div class="metric-value text-danger font-monospace">-${{ profitData.summary.returnsDeduction | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">{{ profitData.summary.returnsCount }} returns deducted (profit accurate)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Revenue vs Gross Profit Visual Breakdown -->
+    <div *ngIf="profitData.dailyProfit && profitData.dailyProfit.length > 0" class="app-card mb-4">
+      <div class="app-card-header">
+        <h2 class="app-card-title">
+          <i class="bi bi-bar-chart-fill text-success"></i>
+          <span>Daily Revenue vs. Gross Profit Trend</span>
+        </h2>
+        <span class="badge bg-success-subtle text-success font-monospace">{{ profitData.dailyProfit.length }} active day(s)</span>
+      </div>
+      <div class="app-card-body">
+        <div class="d-flex flex-column gap-2">
+          <div *ngFor="let dp of profitData.dailyProfit" class="d-flex align-items-center gap-3">
+            <span class="font-monospace small text-muted" style="inline-size: 90px;">{{ dp.date }}</span>
+            <div class="flex-grow-1 d-flex flex-column gap-1">
+              <div class="report-bar-track">
+                <div class="report-bar-rev" [style.width.%]="(dp.revenue / maxDailyProfitRevenue) * 100"></div>
+              </div>
+              <div class="report-bar-track">
+                <div class="report-bar-prof" [style.width.%]="(dp.profit / maxDailyProfitRevenue) * 100"></div>
+              </div>
+            </div>
+            <div class="text-end font-monospace small" style="inline-size: 165px;">
+              <span class="fw-semibold">${{ dp.revenue | number:'1.0-0' }}</span>
+              <span class="text-success fw-bold ms-2">+${{ dp.profit | number:'1.0-0' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product Type Profit Breakdown -->
+    <div class="row g-3 mb-4">
+      <div *ngFor="let tb of profitData.typeBreakdown" class="col-12 col-md-6">
+        <div class="app-card p-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="badge bg-light text-dark border fw-bold">{{ tb.itemType === 'PHONE' ? 'Mobile Phones' : 'Accessories' }}</span>
+            <span class="text-success fw-bold font-monospace">{{ tb.marginPct }}% Margin</span>
+          </div>
+          <div class="d-flex justify-content-between text-muted small font-monospace">
+            <span>Revenue: ${{ tb.revenue | number: '1.2-2' }}</span>
+            <span>COGS: ${{ tb.cogs | number: '1.2-2' }}</span>
+            <span class="text-success fw-bold">Profit: ${{ tb.profit | number: '1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Itemized Profit Line Items Table -->
+    <section class="app-card" aria-label="Itemized Profit Records">
+      <div class="app-card-header d-flex justify-content-between align-items-center">
+        <h2 class="app-card-title">
+          <i class="bi bi-table text-primary"></i>
+          <span>Itemized Sales Line Profit (Actual Selling Price &minus; Purchase/FIFO Cost)</span>
+        </h2>
+      </div>
+      <div class="app-card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Invoice #</th>
+                <th scope="col">Date</th>
+                <th scope="col">Product</th>
+                <th scope="col">Type</th>
+                <th scope="col">Qty</th>
+                <th scope="col">Selling Price</th>
+                <th scope="col">Unit Cost</th>
+                <th scope="col">Subtotal ($)</th>
+                <th scope="col">Profit ($)</th>
+                <th scope="col">Margin %</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let li of profitData.lineItems">
+                <td class="font-monospace fw-bold text-primary">{{ li.invoiceNo }}</td>
+                <td class="text-muted small">{{ li.saleDate | date: 'shortDate' }}</td>
+                <td class="fw-semibold">{{ li.productName }}</td>
+                <td>
+                  <span class="badge bg-light text-secondary border">{{ li.itemType }}</span>
+                </td>
+                <td class="font-monospace text-center">{{ li.quantity }}</td>
+                <td class="font-monospace">${{ li.actualPrice | number: '1.2-2' }}</td>
+                <td class="font-monospace text-muted">${{ li.unitCost | number: '1.2-2' }}</td>
+                <td class="font-monospace fw-semibold">${{ li.subtotal | number: '1.2-2' }}</td>
+                <td class="font-monospace text-success fw-bold">+${{ li.profit | number: '1.2-2' }}</td>
+                <td class="font-monospace">
+                  <span class="badge" [ngClass]="li.marginPct >= 20 ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'">
+                    {{ li.marginPct }}%
+                  </span>
+                </td>
+              </tr>
+              <tr *ngIf="profitData.lineItems.length === 0">
+                <td colspan="10" class="text-center py-4 text-muted">No itemized profit data found for this period.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 3: INVENTORY & VALUATION REPORT                                       -->
+  <!-- ========================================================================= -->
+  <div *ngIf="!isLoading && activeTab === 'inventory' && inventoryData">
+    <!-- Admin Valuation Cards (Admin Only) -->
+    <div *ngIf="isAdmin && inventoryData.valuation" class="row g-3 mb-4">
+      <div class="col-12 col-md-4">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Total Inventory Valuation</span>
+            <div class="metric-icon-box bg-primary-subtle text-primary">
+              <i class="bi bi-box-seam"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">${{ inventoryData.valuation.totalValuation | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">Accurate acquisition cost valuation</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Phone Stock Valuation</span>
+            <div class="metric-icon-box bg-info-subtle text-info">
+              <i class="bi bi-phone"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">${{ inventoryData.valuation.phoneValuation | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">{{ inventoryData.valuation.phonesInStockCount }} phones ({{ inventoryData.valuation.newPhonesCount }} new, {{ inventoryData.valuation.usedPhonesCount }} used)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Accessories Valuation (FIFO)</span>
+            <div class="metric-icon-box bg-success-subtle text-success">
+              <i class="bi bi-headphones"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">${{ inventoryData.valuation.accessoryValuation | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">{{ inventoryData.valuation.accessoriesUnitsCount }} total items in stock</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phones Inventory Listing -->
+    <section class="app-card mb-4" aria-label="Phones Inventory">
+      <div class="app-card-header d-flex justify-content-between align-items-center">
+        <h2 class="app-card-title">
+          <i class="bi bi-phone text-primary"></i>
+          <span>Mobile Phone Inventory ({{ inventoryData.phones.length }})</span>
+        </h2>
+      </div>
+      <div class="app-card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Brand &amp; Model</th>
+                <th scope="col">IMEI 1</th>
+                <th scope="col">Specs</th>
+                <th scope="col">Condition</th>
+                <th *ngIf="isAdmin" scope="col">Cost ($)</th>
+                <th scope="col">Selling Price ($)</th>
+                <th scope="col">Battery</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of inventoryData.phones">
+                <td class="fw-semibold text-dark">{{ p.brand }} {{ p.model }}</td>
+                <td class="font-monospace text-primary fw-bold">{{ p.imei1 }}</td>
+                <td class="small text-muted">{{ p.ram }}GB / {{ p.storage }}GB &middot; {{ p.color }}</td>
+                <td>
+                  <span class="badge" [ngClass]="p.condition === 'NEW' ? 'bg-primary-subtle text-primary' : 'bg-secondary-subtle text-secondary'">
+                    {{ p.condition }}
+                  </span>
+                </td>
+                <td *ngIf="isAdmin" class="font-monospace text-muted">
+                  ${{ p.purchaseCost | number: '1.2-2' }}
+                </td>
+                <td class="font-monospace fw-bold text-dark">${{ p.sellingPrice | number: '1.2-2' }}</td>
+                <td class="font-monospace small">{{ p.batteryHealth ? p.batteryHealth + '%' : 'N/A' }}</td>
+                <td>
+                  <span class="badge bg-success-subtle text-success">{{ p.status }}</span>
+                </td>
+              </tr>
+              <tr *ngIf="inventoryData.phones.length === 0">
+                <td [attr.colspan]="isAdmin ? 8 : 7" class="text-center py-4 text-muted">No phones currently in stock.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Accessories Inventory Listing -->
+    <section class="app-card" aria-label="Accessories Inventory">
+      <div class="app-card-header d-flex justify-content-between align-items-center">
+        <h2 class="app-card-title">
+          <i class="bi bi-headphones text-primary"></i>
+          <span>Accessories Inventory ({{ inventoryData.accessories.length }})</span>
+        </h2>
+      </div>
+      <div class="app-card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Product Name</th>
+                <th scope="col">SKU</th>
+                <th scope="col">Category</th>
+                <th scope="col">Available Qty</th>
+                <th *ngIf="isAdmin" scope="col">Unit Cost ($)</th>
+                <th scope="col">Retail Price ($)</th>
+                <th scope="col">Stock Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let a of inventoryData.accessories">
+                <td class="fw-semibold text-dark">{{ a.name }}</td>
+                <td class="font-monospace text-muted">{{ a.sku }}</td>
+                <td>
+                  <span class="badge bg-light text-secondary border">{{ a.categoryName }}</span>
+                </td>
+                <td class="font-monospace fw-bold text-center" [ngClass]="a.isLowStock ? 'text-danger' : 'text-dark'">
+                  {{ a.availableQuantity }}
+                </td>
+                <td *ngIf="isAdmin" class="font-monospace text-muted">
+                  ${{ a.purchaseCost | number: '1.2-2' }}
+                </td>
+                <td class="font-monospace fw-bold text-dark">${{ a.sellingPrice | number: '1.2-2' }}</td>
+                <td>
+                  <span *ngIf="a.isLowStock" class="badge bg-danger-subtle text-danger">Low Stock (Threshold: {{ a.minStockThreshold }})</span>
+                  <span *ngIf="!a.isLowStock" class="badge bg-success-subtle text-success">Adequate</span>
+                </td>
+              </tr>
+              <tr *ngIf="inventoryData.accessories.length === 0">
+                <td [attr.colspan]="isAdmin ? 7 : 6" class="text-center py-4 text-muted">No accessories cataloged.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 4: PURCHASES & SUPPLIERS REPORT (SHOP_ADMIN ONLY)                     -->
+  <!-- ========================================================================= -->
+  <div *ngIf="!isLoading && activeTab === 'purchases' && purchasesData && isAdmin">
+    <!-- Summary KPI Row -->
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Total Expenditure</span>
+            <div class="metric-icon-box bg-primary-subtle text-primary">
+              <i class="bi bi-wallet-fill"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">${{ purchasesData.summary.totalExpenditure | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">{{ purchasesData.summary.totalOrders }} purchase orders</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Purchase Orders</span>
+            <div class="metric-icon-box bg-info-subtle text-info">
+              <i class="bi bi-box-arrow-in-down"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">{{ purchasesData.summary.totalOrders }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">Total inventory acquisitions</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Supplier Discounts</span>
+            <div class="metric-icon-box bg-success-subtle text-success">
+              <i class="bi bi-tag-fill"></i>
+            </div>
+          </div>
+          <div class="metric-value text-success font-monospace">${{ purchasesData.summary.totalDiscounts | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">Cost savings negotiated</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Input Tax Paid</span>
+            <div class="metric-icon-box bg-secondary-subtle text-secondary">
+              <i class="bi bi-receipt"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">${{ purchasesData.summary.totalTax | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">Claimable purchase tax</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supplier Spend Share Analytics -->
+    <div *ngIf="purchasesData.supplierBreakdown && purchasesData.supplierBreakdown.length > 0" class="app-card mb-4">
+      <div class="app-card-header">
+        <h2 class="app-card-title"><i class="bi bi-building-check text-primary"></i><span>Supplier Spend Distribution</span></h2>
+        <span class="badge bg-light text-secondary border">{{ purchasesData.supplierBreakdown.length }} Vendor(s)</span>
+      </div>
+      <div class="app-card-body">
+        <div class="d-flex flex-column gap-3">
+          <div *ngFor="let sb of purchasesData.supplierBreakdown">
+            <div class="d-flex justify-content-between align-items-center small mb-1">
+              <span class="fw-semibold">{{ sb.supplierName }} <span class="text-muted">({{ sb.ordersCount }} POs)</span></span>
+              <span class="font-monospace fw-bold text-primary">${{ sb.totalSpent | number:'1.2-2' }}</span>
+            </div>
+            <div class="report-bar-track">
+              <div class="report-bar-rev" [style.width.%]="(sb.totalSpent / maxSupplierSpend) * 100"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Purchases Table -->
+    <section class="app-card" aria-label="Purchases Table">
+      <div class="app-card-header d-flex justify-content-between align-items-center">
+        <h2 class="app-card-title">
+          <i class="bi bi-truck text-primary"></i>
+          <span>Purchase Orders &amp; Inbound Shipments ({{ purchasesData.purchases.length }})</span>
+        </h2>
+      </div>
+      <div class="app-card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">PO Reference #</th>
+                <th scope="col">Date</th>
+                <th scope="col">Supplier</th>
+                <th scope="col">Phone</th>
+                <th scope="col">Items Count</th>
+                <th scope="col">Tax ($)</th>
+                <th scope="col">Total Cost ($)</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of purchasesData.purchases">
+                <td class="font-monospace fw-bold text-primary">{{ p.referenceNo }}</td>
+                <td class="text-muted small">{{ p.purchaseDate }}</td>
+                <td class="fw-semibold">{{ p.supplierName }}</td>
+                <td class="font-monospace small text-muted">{{ p.supplierPhone || 'N/A' }}</td>
+                <td class="font-monospace text-center">{{ p.itemCount }}</td>
+                <td class="font-monospace text-muted">${{ p.taxAmount | number: '1.2-2' }}</td>
+                <td class="font-monospace fw-bold text-dark">${{ p.totalAmount | number: '1.2-2' }}</td>
+                <td>
+                  <span class="badge" [ngClass]="p.status === 'CONFIRMED' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'">
+                    {{ p.status }}
+                  </span>
+                </td>
+              </tr>
+              <tr *ngIf="purchasesData.purchases.length === 0">
+                <td colspan="8" class="text-center py-4 text-muted">No purchase records found for this period.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 5: CUSTOMER RECEIVABLES & DEBTORS                                     -->
+  <!-- ========================================================================= -->
+  <div *ngIf="!isLoading && activeTab === 'customers' && customerData">
+    <!-- Summary KPI Row -->
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Total Outstanding Receivables</span>
+            <div class="metric-icon-box bg-danger-subtle text-danger">
+              <i class="bi bi-wallet2"></i>
+            </div>
+          </div>
+          <div class="metric-value text-danger font-monospace">${{ customerData.summary.totalOutstandingDebt | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">{{ customerData.summary.activeDebtors }} active debtor accounts</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Overdue Invoices</span>
+            <div class="metric-icon-box bg-warning-subtle text-warning">
+              <i class="bi bi-clock-history"></i>
+            </div>
+          </div>
+          <div class="metric-value text-warning font-monospace">{{ customerData.summary.overdueInvoicesCount }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">Total overdue: ${{ customerData.summary.overdueAmount | number: '1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Total Credit Limit Granted</span>
+            <div class="metric-icon-box bg-primary-subtle text-primary">
+              <i class="bi bi-shield-check"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">${{ customerData.summary.totalCreditLimit | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">Maximum authorized store credit</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Total Customer Accounts</span>
+            <div class="metric-icon-box bg-info-subtle text-info">
+              <i class="bi bi-people"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">{{ customerData.summary.totalCustomers }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">Registered loyalty &amp; credit profiles</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Bar for Customers -->
+    <div class="app-card p-3 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="form-check form-switch mb-0">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          id="debtorsOnlySwitch"
+          [(ngModel)]="debtorsOnly"
+          (change)="loadActiveReport()"
+        />
+        <label class="form-check-label fw-semibold" for="debtorsOnlySwitch">
+          Show Active Debtors Only (Balance &gt; $0.00)
+        </label>
+      </div>
+
+      <div style="inline-size: 260px;">
+        <input
+          type="text"
+          class="form-control form-control-sm"
+          placeholder="Search by name or phone..."
+          [(ngModel)]="searchTerm"
+          (keyup.enter)="loadActiveReport()"
+        />
+      </div>
+    </div>
+
+    <!-- Debtors Table -->
+    <section class="app-card" aria-label="Customer Debtors Table">
+      <div class="app-card-header d-flex justify-content-between align-items-center">
+        <h2 class="app-card-title">
+          <i class="bi bi-person-lines-fill text-primary"></i>
+          <span>Customer Accounts &amp; Debtors Ledger ({{ customerData.customers.length }})</span>
+        </h2>
+      </div>
+      <div class="app-card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Customer Name</th>
+                <th scope="col">Phone</th>
+                <th scope="col">CNIC (Encrypted / Masked)</th>
+                <th scope="col">Credit Limit</th>
+                <th scope="col">Outstanding Balance</th>
+                <th scope="col">Available Credit</th>
+                <th scope="col">Overdue Bills</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let c of customerData.customers">
+                <td class="fw-semibold text-dark">{{ c.name }}</td>
+                <td class="font-monospace text-muted">{{ c.phone || 'N/A' }}</td>
+                <td class="font-monospace text-secondary">{{ c.cnicMasked || 'Walk-in / None' }}</td>
+                <td class="font-monospace">${{ c.creditLimit | number: '1.2-2' }}</td>
+                <td class="font-monospace" [ngClass]="c.outstandingBalance > 0 ? 'text-danger fw-bold' : 'text-success'">
+                  ${{ c.outstandingBalance | number: '1.2-2' }}
+                </td>
+                <td class="font-monospace text-muted">${{ c.availableCredit | number: '1.2-2' }}</td>
+                <td>
+                  <span *ngIf="c.overdueInvoicesCount > 0" class="badge bg-danger-subtle text-danger font-monospace">
+                    {{ c.overdueInvoicesCount }} Overdue
+                  </span>
+                  <span *ngIf="c.overdueInvoicesCount === 0" class="badge bg-light text-secondary border">0</span>
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="c.status === 'ACTIVE' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'">
+                    {{ c.status }}
+                  </span>
+                </td>
+              </tr>
+              <tr *ngIf="customerData.customers.length === 0">
+                <td colspan="8" class="text-center py-4 text-muted">No customers found matching the criteria.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 6: RETURNS & WARRANTY REPORT                                          -->
+  <!-- ========================================================================= -->
+  <div *ngIf="!isLoading && activeTab === 'returns-warranty' && returnsWarrantyData">
+    <!-- Summary KPI Row -->
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Returns Processed</span>
+            <div class="metric-icon-box bg-danger-subtle text-danger">
+              <i class="bi bi-arrow-counterclockwise"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">{{ returnsWarrantyData.summary.totalReturnsCount }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">Items returned or exchanged</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Total Refund Disbursed</span>
+            <div class="metric-icon-box bg-secondary-subtle text-secondary">
+              <i class="bi bi-cash"></i>
+            </div>
+          </div>
+          <div class="metric-value text-danger font-monospace">${{ returnsWarrantyData.summary.totalRefundAmount | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">Settled via original tender or credit</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Warranty Claims Filed</span>
+            <div class="metric-icon-box bg-info-subtle text-info">
+              <i class="bi bi-shield-check"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">{{ returnsWarrantyData.summary.totalClaimsCount }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">{{ returnsWarrantyData.summary.pendingClaimsCount }} in inspection/repair</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Total Repair Costs Incurred</span>
+            <div class="metric-icon-box bg-warning-subtle text-warning">
+              <i class="bi bi-tools"></i>
+            </div>
+          </div>
+          <div class="metric-value font-monospace">${{ returnsWarrantyData.summary.totalRepairCosts | number: '1.2-2' }}</div>
+          <div class="metric-footer">
+            <span class="text-muted">Parts &amp; labor service charges</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Returns Table -->
+    <section class="app-card mb-4" aria-label="Returns Log">
+      <div class="app-card-header d-flex justify-content-between align-items-center">
+        <h2 class="app-card-title">
+          <i class="bi bi-arrow-return-left text-danger"></i>
+          <span>Customer Returns &amp; Exchanges Log ({{ returnsWarrantyData.returns.length }})</span>
+        </h2>
+      </div>
+      <div class="app-card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Return #</th>
+                <th scope="col">Invoice #</th>
+                <th scope="col">Customer</th>
+                <th scope="col">Return Type</th>
+                <th scope="col">Refund Amount ($)</th>
+                <th scope="col">Reason</th>
+                <th scope="col">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of returnsWarrantyData.returns">
+                <td class="font-monospace fw-bold text-danger">{{ r.returnNo }}</td>
+                <td class="font-monospace text-muted">{{ r.invoiceNo || 'N/A' }}</td>
+                <td>{{ r.customerName }}</td>
+                <td>
+                  <span class="badge" [ngClass]="r.returnType === 'REFUND' ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary'">
+                    {{ r.returnType }}
+                  </span>
+                </td>
+                <td class="font-monospace text-danger fw-bold">${{ r.totalRefundAmount | number: '1.2-2' }}</td>
+                <td class="text-truncate" style="max-inline-size: 260px;">{{ r.reason }}</td>
+                <td class="text-muted small">{{ r.createdAt | date: 'short' }}</td>
+              </tr>
+              <tr *ngIf="returnsWarrantyData.returns.length === 0">
+                <td colspan="7" class="text-center py-4 text-muted">No returns recorded during this period.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Warranty Claims Table -->
+    <section class="app-card" aria-label="Warranty Claims Log">
+      <div class="app-card-header d-flex justify-content-between align-items-center">
+        <h2 class="app-card-title">
+          <i class="bi bi-shield-shaded text-primary"></i>
+          <span>Warranty Claims &amp; Repair Job Cards ({{ returnsWarrantyData.warrantyClaims.length }})</span>
+        </h2>
+      </div>
+      <div class="app-card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Claim Ref #</th>
+                <th scope="col">Invoice #</th>
+                <th scope="col">Customer</th>
+                <th scope="col">Issue Description</th>
+                <th scope="col">Status</th>
+                <th scope="col">Labor Cost ($)</th>
+                <th scope="col">Customer Charge ($)</th>
+                <th scope="col">Filed Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let wc of returnsWarrantyData.warrantyClaims">
+                <td class="font-monospace fw-bold text-primary">{{ wc.claimRef }}</td>
+                <td class="font-monospace text-muted">{{ wc.invoiceNo || 'N/A' }}</td>
+                <td>{{ wc.customerName }}</td>
+                <td class="text-truncate" style="max-inline-size: 240px;">{{ wc.problemDescription }}</td>
+                <td>
+                  <span class="badge" [ngClass]="wc.status === 'REPAIRED' || wc.status === 'REPLACED' ? 'bg-success-subtle text-success' : (wc.status === 'PENDING' ? 'bg-warning-subtle text-warning' : 'bg-secondary-subtle text-secondary')">
+                    {{ wc.status }}
+                  </span>
+                </td>
+                <td class="font-monospace text-muted">${{ wc.laborCost | number: '1.2-2' }}</td>
+                <td class="font-monospace fw-bold text-dark">${{ wc.customerCharge | number: '1.2-2' }}</td>
+                <td class="text-muted small">{{ wc.createdAt | date: 'short' }}</td>
+              </tr>
+              <tr *ngIf="returnsWarrantyData.warrantyClaims.length === 0">
+                <td colspan="8" class="text-center py-4 text-muted">No warranty claims filed during this period.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

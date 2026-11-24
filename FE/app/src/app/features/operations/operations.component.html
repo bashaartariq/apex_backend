@@ -1,0 +1,611 @@
+<div class="container-fluid px-3 px-lg-4 py-4" style="max-inline-size: 1620px;">
+  <!-- Header -->
+  <div class="page-hero">
+    <div>
+      <span class="page-eyebrow"><i class="bi bi-tools"></i> After-Sales &amp; Service Desk</span>
+      <h1 class="page-title">{{ pageTitle }}</h1>
+      <p class="page-subtitle">Atomic FIFO inventory restocking, multi-product exchanges, and IMEI repair job cards.</p>
+    </div>
+
+    <!-- Toggle view buttons -->
+    <div class="btn-group" role="group">
+      <a routerLink="/returns" class="btn" [ngClass]="mode === 'returns' ? 'btn-primary' : 'btn-outline-secondary'">
+        <i class="bi bi-arrow-left-right me-1"></i> Returns &amp; Exchanges
+      </a>
+      <a routerLink="/warranty" class="btn" [ngClass]="mode === 'warranty' ? 'btn-primary' : 'btn-outline-secondary'">
+        <i class="bi bi-shield-check me-1"></i> Warranty &amp; Claims
+      </a>
+    </div>
+  </div>
+
+  <!-- MODE 1: RETURNS & EXCHANGES -->
+  <div *ngIf="mode === 'returns'">
+    <!-- Returns KPI Strip -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Total Returns</span>
+            <div class="metric-icon-box bg-primary-subtle text-primary"><i class="bi bi-arrow-return-left"></i></div>
+          </div>
+          <div class="metric-value font-monospace">{{ returnsHistory.length }}</div>
+          <div class="metric-footer"><span class="text-muted">Recorded audit events</span></div>
+        </div>
+      </div>
+      <div class="col-6 col-xl-3">
+        <div class="metric-card accent-danger h-100">
+          <div class="metric-header">
+            <span class="metric-label">Total Refunded</span>
+            <div class="metric-icon-box bg-danger-subtle text-danger"><i class="bi bi-cash-coin"></i></div>
+          </div>
+          <div class="metric-value text-danger font-monospace">${{ totalRefundsDisbursed | number:'1.2-2' }}</div>
+          <div class="metric-footer"><span class="text-muted">Deducted from gross profit</span></div>
+        </div>
+      </div>
+      <div class="col-6 col-xl-3">
+        <div class="metric-card accent-warning h-100">
+          <div class="metric-header">
+            <span class="metric-label">Exchanges</span>
+            <div class="metric-icon-box bg-warning-subtle text-warning"><i class="bi bi-arrow-repeat"></i></div>
+          </div>
+          <div class="metric-value font-monospace">{{ exchangesCount }}</div>
+          <div class="metric-footer"><span class="text-muted">Multi-product swaps</span></div>
+        </div>
+      </div>
+      <div class="col-6 col-xl-3">
+        <div class="metric-card accent-info h-100">
+          <div class="metric-header">
+            <span class="metric-label">Direct Refunds</span>
+            <div class="metric-icon-box bg-info-subtle text-info"><i class="bi bi-receipt"></i></div>
+          </div>
+          <div class="metric-value font-monospace">{{ returnsHistory.length - exchangesCount }}</div>
+          <div class="metric-footer"><span class="text-muted">Standard invoice reversals</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invoice Search Card -->
+    <div class="card border-0 shadow-sm rounded-3 mb-4">
+      <div class="card-header bg-white border-bottom p-3">
+        <h5 class="fw-bold mb-0"><i class="bi bi-search me-2 text-primary"></i>Lookup POS Sale Invoice</h5>
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3 align-items-center">
+          <div class="col-md-7">
+            <label class="form-label small fw-bold">Enter Invoice Number (e.g. INV-000001) or Customer Name</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light"><i class="bi bi-receipt"></i></span>
+              <input
+                type="text"
+                class="form-control font-monospace"
+                placeholder="INV-000001"
+                [(ngModel)]="invoiceSearchTerm"
+                (keyup.enter)="searchInvoice()"
+              />
+              <button type="button" class="btn btn-primary px-4" (click)="searchInvoice()" [disabled]="isLoadingSale">
+                <span *ngIf="isLoadingSale" class="spinner-border spinner-border-sm me-1"></span>
+                Lookup Sale
+              </button>
+            </div>
+            <!-- Quick Pick Recent Invoices -->
+            <div *ngIf="recentInvoices.length > 0" class="d-flex align-items-center flex-wrap gap-1 mt-2">
+              <span class="text-muted small me-1">Recent:</span>
+              <button
+                *ngFor="let inv of recentInvoices"
+                type="button"
+                class="btn btn-sm btn-outline-secondary py-0 px-2 font-monospace"
+                style="font-size: 0.72rem;"
+                (click)="quickPickInvoice(inv.invoiceNo)"
+                [title]="inv.customerName + ' — $' + (inv.totalAmount | number:'1.2-2')"
+              >
+                {{ inv.invoiceNo }}
+              </button>
+            </div>
+          </div>
+          <div class="col-md-5">
+            <div class="p-3 bg-light rounded-3 border small text-muted">
+              <strong>Return Policy:</strong> Serialized phones return to <code>IN_STOCK</code>. Accessories restore chronological FIFO batch quantities automatically.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Retrieved Sale Items for Return -->
+    <div *ngIf="searchedSale" class="card border-0 shadow-sm rounded-3 mb-4">
+      <div class="card-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="fw-bold mb-0">Invoice: {{ searchedSale.sale.invoiceNo }}</h5>
+          <small class="text-muted">Customer: {{ searchedSale.sale.customerName }} &middot; Date: {{ searchedSale.sale.createdAt | date:'medium' }}</small>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <button
+            type="button"
+            class="btn btn-sm"
+            [ngClass]="isExchangeMode ? 'btn-warning text-dark fw-bold' : 'btn-outline-secondary'"
+            (click)="toggleExchangeMode()"
+          >
+            <i class="bi bi-arrow-repeat me-1"></i>
+            {{ isExchangeMode ? 'Switch to Direct Refund' : 'Switch to Multi-Product Exchange' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3">Select Items to Return from Invoice</h6>
+        <div class="table-responsive mb-4">
+          <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 5%;">Select</th>
+                <th style="width: 35%;">Item &amp; Serial / Identifier</th>
+                <th class="text-center" style="width: 15%;">Sale Qty</th>
+                <th class="text-end" style="width: 15%;">Sold Price</th>
+                <th class="text-end" style="width: 15%;">Unit Refund ($)</th>
+                <th class="text-center" style="width: 15%;">Restock</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of searchedSale.items">
+                <td>
+                  <input
+                    type="checkbox"
+                    class="form-check-input"
+                    [(ngModel)]="returnItemsSelection[item.id].selected"
+                  />
+                </td>
+                <td>
+                  <div class="fw-bold text-dark">{{ item.productName }}</div>
+                  <small *ngIf="item.itemType === 'PHONE'" class="badge bg-primary-subtle text-primary font-monospace">
+                    IMEI: {{ item.identifier }}
+                  </small>
+                  <small *ngIf="item.itemType === 'ACCESSORY'" class="badge bg-light text-secondary border font-monospace">
+                    SKU: {{ item.identifier }}
+                  </small>
+                </td>
+                <td class="text-center font-monospace">{{ item.quantity }}</td>
+                <td class="text-end font-monospace">${{ item.actualPrice | number:'1.2-2' }}</td>
+                <td class="text-end">
+                  <input
+                    type="number"
+                    step="0.01"
+                    class="form-control form-control-sm font-monospace text-end"
+                    style="max-width: 110px; margin-left: auto;"
+                    [(ngModel)]="returnItemsSelection[item.id].refundAmount"
+                    [disabled]="!returnItemsSelection[item.id].selected"
+                  />
+                </td>
+                <td class="text-center">
+                  <div class="form-check form-switch d-inline-block">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      [(ngModel)]="returnItemsSelection[item.id].restore"
+                      [disabled]="!returnItemsSelection[item.id].selected"
+                    />
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Exchange Replacement Selection Block -->
+        <div *ngIf="isExchangeMode" class="p-4 bg-light rounded border mb-4">
+          <h6 class="fw-bold text-dark mb-3"><i class="bi bi-box-arrow-in-right me-1 text-primary"></i>Select Replacement Product</h6>
+          <div class="row g-3 align-items-center mb-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Pick Replacement from In-Stock Catalog</label>
+              <select class="form-select" [ngModel]="selectedReplacementItem" (ngModelChange)="selectReplacementProduct($event)">
+                <option [ngValue]="null">Select product to exchange with...</option>
+                <option *ngFor="let prod of replacementCatalog" [ngValue]="prod">
+                  {{ prod.itemType }}: {{ prod.productName }} ({{ prod.identifier }}) — ${{ prod.defaultPrice | number:'1.2-2' }} (Stock: {{ prod.stockQuantity }})
+                </option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Replacement Unit Price ($)</label>
+              <input type="number" step="0.01" class="form-control font-monospace" [(ngModel)]="replacementActualPrice" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Difference Payment Method</label>
+              <select class="form-select" [(ngModel)]="exchangePaymentMethod">
+                <option value="CASH">Cash</option>
+                <option value="CARD">Card</option>
+                <option value="BANK_TRANSFER">Bank Transfer</option>
+                <option value="JAZZCASH">JazzCash</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Financial Settlement Summary -->
+          <div class="p-3 bg-white rounded border d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+              <span class="text-muted small d-block">Returned Items Credit:</span>
+              <span class="fs-5 fw-bold font-monospace text-dark">${{ totalCalculatedRefund | number:'1.2-2' }}</span>
+            </div>
+            <div class="text-center">
+              <span class="text-muted small d-block">New Replacement Value:</span>
+              <span class="fs-5 fw-bold font-monospace text-primary">
+                ${{ (replacementActualPrice * replacementQuantity) | number:'1.2-2' }}
+              </span>
+            </div>
+            <div class="text-end">
+              <span class="text-muted small d-block">Settlement Difference:</span>
+              <span
+                class="badge fs-6 px-3 py-2 font-monospace"
+                [ngClass]="exchangeDifference.type === 'CUSTOMER_PAYS' ? 'bg-danger text-white' : (exchangeDifference.type === 'SHOP_REFUNDS' ? 'bg-success text-white' : 'bg-secondary text-white')"
+              >
+                {{ exchangeDifference.type }}: ${{ exchangeDifference.amount | number:'1.2-2' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Return Reason & Finalize -->
+        <div class="row g-3 align-items-end">
+          <div class="col-md-8">
+            <label class="form-label small fw-bold">Return Reason / Customer Remarks *</label>
+            <input type="text" class="form-control" placeholder="e.g. Customer changed mind / incorrect accessory size..." [(ngModel)]="returnReason" />
+          </div>
+          <div class="col-md-4 text-end">
+            <button
+              type="button"
+              class="btn px-4 py-2 fw-bold"
+              [ngClass]="isExchangeMode ? 'btn-warning' : 'btn-danger'"
+              (click)="submitReturnOrExchange()"
+              [disabled]="isProcessingReturn || selectedReturnItemsCount === 0"
+            >
+              <span *ngIf="isProcessingReturn" class="spinner-border spinner-border-sm me-1"></span>
+              {{ isExchangeMode ? 'Process Product Exchange' : 'Confirm & Process Refund ($' + totalCalculatedRefund.toFixed(2) + ')' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Returns History Table -->
+    <div class="card border-0 shadow-sm rounded-3">
+      <div class="card-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-secondary"></i>Recent Returns &amp; Exchanges Audit</h5>
+        <span class="badge bg-light text-secondary border">{{ returnsHistory.length }} Records</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+          <thead class="table-light">
+            <tr>
+              <th>Return #</th>
+              <th>Original Invoice</th>
+              <th>Customer</th>
+              <th>Type</th>
+              <th class="text-end">Refund Amount</th>
+              <th>Reason</th>
+              <th>Processed By</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="isLoadingReturns">
+              <td colspan="8" class="text-center py-4 text-muted">
+                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                <span>Loading returns &amp; exchanges audit...</span>
+              </td>
+            </tr>
+            <ng-container *ngIf="!isLoadingReturns">
+              <tr *ngIf="returnsHistory.length === 0">
+                <td colspan="8" class="text-center py-4 text-muted">No returns recorded yet.</td>
+              </tr>
+              <tr *ngFor="let r of returnsHistory">
+                <td class="fw-bold font-monospace text-primary">{{ r.returnNo }}</td>
+                <td class="font-monospace">{{ r.invoiceNo }}</td>
+                <td>{{ r.customerName }}</td>
+                <td>
+                  <span class="badge" [ngClass]="r.returnType === 'EXCHANGE' ? 'bg-warning text-dark' : 'bg-info text-dark'">
+                    {{ r.returnType }}
+                  </span>
+                </td>
+                <td class="text-end font-monospace fw-bold text-danger">-${{ r.totalRefundAmount | number:'1.2-2' }}</td>
+                <td>{{ r.reason }}</td>
+                <td>{{ r.processorName }}</td>
+                <td class="text-muted">{{ r.createdAt | date:'short' }}</td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODE 2: WARRANTY & REPAIRS -->
+  <div *ngIf="mode === 'warranty'">
+    <!-- Warranty KPI Strip -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-xl-3">
+        <div class="metric-card accent-success h-100">
+          <div class="metric-header">
+            <span class="metric-label">Active Coverages</span>
+            <div class="metric-icon-box bg-success-subtle text-success"><i class="bi bi-shield-check"></i></div>
+          </div>
+          <div class="metric-value font-monospace">{{ activeWarrantiesCount }}</div>
+          <div class="metric-footer"><span class="text-muted">{{ warrantiesList.length }} total warranty records</span></div>
+        </div>
+      </div>
+      <div class="col-6 col-xl-3">
+        <div class="metric-card accent-danger h-100">
+          <div class="metric-header">
+            <span class="metric-label">Open Repair Jobs</span>
+            <div class="metric-icon-box bg-danger-subtle text-danger"><i class="bi bi-wrench-adjustable"></i></div>
+          </div>
+          <div class="metric-value text-danger font-monospace">{{ openClaimsCount }}</div>
+          <div class="metric-footer"><span class="text-muted">Devices locked UNDER_REPAIR</span></div>
+        </div>
+      </div>
+      <div class="col-6 col-xl-3">
+        <div class="metric-card accent-info h-100">
+          <div class="metric-header">
+            <span class="metric-label">Resolved / Delivered</span>
+            <div class="metric-icon-box bg-info-subtle text-info"><i class="bi bi-check2-circle"></i></div>
+          </div>
+          <div class="metric-value font-monospace">{{ completedClaimsCount }}</div>
+          <div class="metric-footer"><span class="text-muted">Completed service claims</span></div>
+        </div>
+      </div>
+      <div class="col-6 col-xl-3">
+        <div class="metric-card h-100">
+          <div class="metric-header">
+            <span class="metric-label">Total Claims Tracked</span>
+            <div class="metric-icon-box bg-primary-subtle text-primary"><i class="bi bi-clipboard2-pulse"></i></div>
+          </div>
+          <div class="metric-value font-monospace">{{ warrantyClaims.length }}</div>
+          <div class="metric-footer"><span class="text-muted">Full IMEI repair history</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Active Warranties List -->
+    <div class="card border-0 shadow-sm rounded-3 mb-4">
+      <div class="card-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="fw-bold mb-0"><i class="bi bi-shield-check me-2 text-success"></i>Active Product Warranties</h5>
+        <div class="input-group" style="max-width: 320px;">
+          <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+          <input
+            type="text"
+            class="form-control form-control-sm"
+            placeholder="Search IMEI, product or customer..."
+            [(ngModel)]="warrantySearchTerm"
+            (keyup.enter)="loadWarranties()"
+          />
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+          <thead class="table-light">
+            <tr>
+              <th>Product &amp; Serial / IMEI</th>
+              <th>Customer</th>
+              <th>Invoice #</th>
+              <th>Duration</th>
+              <th>Coverage Window</th>
+              <th class="text-center">Status</th>
+              <th class="text-center">Claim</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="isLoadingWarranty">
+              <td colspan="7" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status"></div>
+              </td>
+            </tr>
+            <tr *ngIf="!isLoadingWarranty && warrantiesList.length === 0">
+              <td colspan="7" class="text-center py-4 text-muted">No warranty records found.</td>
+            </tr>
+            <tr *ngFor="let w of warrantiesList">
+              <td>
+                <div class="fw-bold text-dark">{{ w.productName }}</div>
+                <span class="badge bg-light text-secondary border font-monospace">IMEI: {{ w.identifier }}</span>
+              </td>
+              <td>{{ w.customerName }} ({{ w.customerPhone || 'No phone' }})</td>
+              <td class="font-monospace">{{ w.invoiceNo }}</td>
+              <td>{{ w.durationMonths }} Month(s)</td>
+              <td class="small text-muted font-monospace">{{ w.startDate }} to {{ w.endDate }}</td>
+              <td class="text-center">
+                <span class="badge" [ngClass]="w.status === 'ACTIVE' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary'">
+                  {{ w.status }}
+                </span>
+              </td>
+              <td class="text-center">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-danger py-0 px-2"
+                  [disabled]="w.status !== 'ACTIVE'"
+                  (click)="openRegisterClaim(w)"
+                >
+                  <i class="bi bi-wrench me-1"></i> File Claim
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Warranty Claims & Repairs Lifecycle -->
+    <div class="card border-0 shadow-sm rounded-3">
+      <div class="card-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="fw-bold mb-0"><i class="bi bi-tools me-2 text-primary"></i>Warranty Claims &amp; Repair Pipeline</h5>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn" [ngClass]="claimStatusFilter === 'ALL' ? 'btn-primary' : 'btn-outline-secondary'" (click)="claimStatusFilter = 'ALL'">All ({{ warrantyClaims.length }})</button>
+            <button type="button" class="btn" [ngClass]="claimStatusFilter === 'OPEN' ? 'btn-primary' : 'btn-outline-secondary'" (click)="claimStatusFilter = 'OPEN'">Intake</button>
+            <button type="button" class="btn" [ngClass]="claimStatusFilter === 'REPAIR' ? 'btn-primary' : 'btn-outline-secondary'" (click)="claimStatusFilter = 'REPAIR'">In Repair</button>
+            <button type="button" class="btn" [ngClass]="claimStatusFilter === 'DONE' ? 'btn-primary' : 'btn-outline-secondary'" (click)="claimStatusFilter = 'DONE'">Resolved</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+          <thead class="table-light">
+            <tr>
+              <th>Claim Ref</th>
+              <th>Product / IMEI</th>
+              <th>Customer</th>
+              <th>Problem Description</th>
+              <th class="text-center">Repair Pipeline Stage</th>
+              <th>Labor / Charges</th>
+              <th class="text-center">Update</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="isLoadingClaims">
+              <td colspan="7" class="text-center py-4 text-muted">
+                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                <span>Loading warranty claims...</span>
+              </td>
+            </tr>
+            <ng-container *ngIf="!isLoadingClaims">
+              <tr *ngIf="filteredWarrantyClaims.length === 0">
+                <td colspan="7" class="text-center py-4 text-muted">No warranty claims matching this stage filter.</td>
+              </tr>
+              <tr *ngFor="let c of filteredWarrantyClaims">
+                <td class="fw-bold font-monospace text-primary">{{ c.claimRef }}</td>
+                <td>
+                  <div class="fw-semibold">{{ c.productName }}</div>
+                  <small class="font-monospace text-muted">{{ c.identifier }}</small>
+                </td>
+                <td>{{ c.customerName }}</td>
+                <td class="small text-secondary" style="max-inline-size: 250px;">{{ c.problemDescription }}</td>
+                <td class="text-center">
+                  <span
+                    class="badge px-2 py-1 mb-1 d-inline-block"
+                    [ngClass]="{
+                      'bg-danger text-white': c.status === 'UNDER_REPAIR' || c.status === 'REGISTERED' || c.status === 'REJECTED',
+                      'bg-warning text-dark': c.status === 'UNDER_INSPECTION' || c.status === 'SENT_TO_SUPPLIER' || c.status === 'APPROVED',
+                      'bg-info text-dark': c.status === 'REPAIRED' || c.status === 'READY_FOR_COLLECTION',
+                      'bg-success text-white': c.status === 'DELIVERED' || c.status === 'CLOSED'
+                    }"
+                  >
+                    {{ c.status }}
+                  </span>
+                  <div class="pipeline-dots justify-content-center" [title]="'Stage ' + getClaimStageIndex(c.status) + ' of 5'">
+                    <span *ngFor="let step of [1,2,3,4,5]" class="pipe-seg" [class.done]="getClaimStageIndex(c.status) >= step"></span>
+                  </div>
+                </td>
+                <td class="font-monospace small">
+                  <span>Labor: ${{ c.laborCost || 0 | number:'1.2-2' }}</span>
+                  <span *ngIf="c.customerCharge" class="d-block text-danger">Charge: ${{ c.customerCharge | number:'1.2-2' }}</span>
+                </td>
+                <td class="text-center">
+                  <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" (click)="openUpdateClaim(c)">
+                    Update Job
+                  </button>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REGISTER NEW CLAIM -->
+<div *ngIf="showNewClaimModal && selectedWarrantyRecord" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow border-0">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title fw-bold text-white"><i class="bi bi-shield-exclamation me-2"></i>File Warranty Repair Claim</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="showNewClaimModal = false"></button>
+      </div>
+      <div class="modal-body p-4">
+        <p class="mb-2"><strong>Device:</strong> {{ selectedWarrantyRecord.productName }} (IMEI: {{ selectedWarrantyRecord.identifier }})</p>
+        <p class="small text-muted mb-3">Customer: {{ selectedWarrantyRecord.customerName }} &middot; Invoice: {{ selectedWarrantyRecord.invoiceNo }}</p>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Reported Defect / Issue *</label>
+          <textarea
+            class="form-control"
+            rows="3"
+            placeholder="Describe the defect reported by customer (e.g. Touchscreen glitching, battery draining rapidly)..."
+            [(ngModel)]="claimProblemDescription"
+          ></textarea>
+        </div>
+
+        <div class="alert alert-warning small mb-0">
+          <i class="bi bi-lock-fill me-1"></i>
+          Registering this claim marks the phone as <strong>UNDER_REPAIR</strong> in store inventory to prevent accidental sale until repaired.
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-outline-secondary" (click)="showNewClaimModal = false">Cancel</button>
+        <button type="button" class="btn btn-danger px-4" (click)="submitNewClaim()" [disabled]="isProcessingClaim">
+          <span *ngIf="isProcessingClaim" class="spinner-border spinner-border-sm me-1"></span>
+          Register Claim
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: UPDATE CLAIM JOB STATUS -->
+<div *ngIf="showUpdateClaimModal && activeClaim" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow border-0">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold text-white"><i class="bi bi-tools me-2"></i>Update Claim {{ activeClaim.claimRef }}</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="showUpdateClaimModal = false"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Workflow Status</label>
+          <select class="form-select" [(ngModel)]="updateClaimStatus">
+            <option value="REGISTERED">REGISTERED</option>
+            <option value="UNDER_INSPECTION">UNDER_INSPECTION</option>
+            <option value="APPROVED">APPROVED</option>
+            <option value="UNDER_REPAIR">UNDER_REPAIR</option>
+            <option value="SENT_TO_SUPPLIER">SENT_TO_SUPPLIER</option>
+            <option value="REPAIRED">REPAIRED</option>
+            <option value="READY_FOR_COLLECTION">READY_FOR_COLLECTION</option>
+            <option value="DELIVERED">DELIVERED (Customer Collected)</option>
+            <option value="CLOSED">CLOSED</option>
+            <option value="REJECTED">REJECTED (Physical/Liquid Damage)</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Technician Repair Notes</label>
+          <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="updateRepairNotes" placeholder="Work done, diagnostics..."></textarea>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-bold">Parts Used</label>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="updatePartsUsed" placeholder="e.g. OLED Display Panel" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-bold">Labor Cost ($)</label>
+            <input type="number" step="0.5" class="form-control form-control-sm font-monospace" [(ngModel)]="updateLaborCost" />
+          </div>
+        </div>
+
+        <div class="row g-2 mb-2">
+          <div class="col-md-6">
+            <label class="form-label small fw-bold">Customer Charge ($)</label>
+            <input type="number" step="0.5" class="form-control form-control-sm font-monospace" [(ngModel)]="updateCustomerCharge" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-bold">Replacement IMEI (if replaced)</label>
+            <input type="text" class="form-control form-control-sm font-monospace" [(ngModel)]="updateReplacementImei" placeholder="New device IMEI..." />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-outline-secondary" (click)="showUpdateClaimModal = false">Cancel</button>
+        <button type="button" class="btn btn-primary px-4" (click)="saveClaimStatus()" [disabled]="isProcessingClaim">
+          <span *ngIf="isProcessingClaim" class="spinner-border spinner-border-sm me-1"></span>
+          Save Job Card
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

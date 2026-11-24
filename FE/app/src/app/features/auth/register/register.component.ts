@@ -59,6 +59,33 @@ export class RegisterComponent {
     this.showConfirmPassword = !this.showConfirmPassword;
   }
 
+  get passwordStrengthScore(): number {
+    const val: string = this.registerForm.get('password')?.value || '';
+    if (!val) return 0;
+    let score = 0;
+    if (val.length >= 8) score++;
+    if (/[A-Z]/.test(val)) score++;
+    if (/[a-z]/.test(val)) score++;
+    if (/\d/.test(val)) score++;
+    return score;
+  }
+
+  get passwordStrengthLabel(): string {
+    const s = this.passwordStrengthScore;
+    if (s <= 1) return 'Weak';
+    if (s === 2) return 'Fair';
+    if (s === 3) return 'Good';
+    return 'Strong';
+  }
+
+  get passwordStrengthClass(): string {
+    const s = this.passwordStrengthScore;
+    if (s <= 1) return 'weak';
+    if (s === 2) return 'fair';
+    if (s === 3) return 'good';
+    return 'strong';
+  }
+
   onSubmit(): void {
     if (this.registerForm.invalid) {
       this.registerForm.markAllAsTouched();

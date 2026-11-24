@@ -1,560 +1,2290 @@
-<div class="inventory-page container-fluid px-3 px-lg-4 py-4">
-  <!-- Page Header -->
-  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+<div class="inventory-page container-fluid py-4 px-3 px-md-4">
+  <!-- Top Header & Quick Actions -->
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
     <div>
-      <div class="d-flex align-items-center gap-2 mb-1">
-        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold px-2 py-1">
-          Store Stock Register
-        </span>
-        <span class="text-muted small">&middot; Multi-Tenant Scoped (SHOP-DOWNTOWN-01)</span>
-      </div>
-      <h1 class="h3 fw-bold text-dark mb-0">Inventory &amp; Devices</h1>
+      <h1 class="h3 fw-bold text-dark mb-1">Inventory &amp; Asset Management</h1>
+      <p class="text-muted small mb-0">Multi-tenant serialized phone tracking, FIFO accessory valuation &amp; stock control</p>
     </div>
 
-    <div class="d-flex align-items-center gap-2">
-      <button type="button" class="btn-app btn-app-secondary" (click)="openAddAccessory()">
-        <i class="bi bi-plus-circle" aria-hidden="true"></i>
-        <span>Add Accessory Stock</span>
+    <!-- Quick IMEI Lookup & Primary CTAs -->
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <!-- Quick IMEI Search bar -->
+      <div class="input-group input-group-sm" style="inline-size: 260px;">
+        <span class="input-group-text bg-white border-end-0 text-muted">
+          <i class="bi bi-upc-scan"></i>
+        </span>
+        <input
+          type="text"
+          class="form-control border-start-0"
+          placeholder="Lookup IMEI..."
+          [(ngModel)]="imeiLookupInput"
+          (keyup.enter)="performImeiLookup()"
+        />
+        <button
+          class="btn btn-outline-secondary"
+          type="button"
+          (click)="performImeiLookup()"
+          [disabled]="imeiLookupLoading || !imeiLookupInput.trim()"
+        >
+          <span *ngIf="imeiLookupLoading" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!imeiLookupLoading" class="bi bi-search"></i>
+        </button>
+      </div>
+
+      <!-- Action dropdown or buttons -->
+      <button
+        *ngIf="auth.isAdmin()"
+        type="button"
+        class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm"
+        (click)="openAddPhone()"
+      >
+        <i class="bi bi-plus-lg"></i>
+        <span>Add Phone</span>
       </button>
 
-      <button type="button" class="btn-app btn-app-primary shadow-xs" (click)="openAddPhone()">
-        <i class="bi bi-phone-fill" aria-hidden="true"></i>
-        <span>Add Mobile Phone (IMEI)</span>
+      <button
+        *ngIf="auth.isAdmin()"
+        type="button"
+        class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
+        (click)="openAddAccessory()"
+      >
+        <i class="bi bi-plus-circle"></i>
+        <span>Add Accessory</span>
+      </button>
+
+      <button
+        *ngIf="auth.isAdmin()"
+        type="button"
+        class="btn btn-dark btn-sm d-flex align-items-center gap-1 shadow-sm"
+        (click)="openCreatePo()"
+      >
+        <i class="bi bi-box-arrow-in-down"></i>
+        <span>Intake PO</span>
       </button>
     </div>
   </div>
 
-  <!-- Primary Sub-navigation Tabs -->
-  <div class="app-tabs">
-    <button
-      type="button"
-      class="tab-btn"
-      [class.active]="activeTab === 'phones'"
-      (click)="setTab('phones')"
-    >
-      <i class="bi bi-phone" aria-hidden="true"></i>
-      <span>Mobile Phones</span>
-      <span class="tab-badge font-monospace">{{ phones.length }}</span>
-    </button>
-
-    <button
-      type="button"
-      class="tab-btn"
-      [class.active]="activeTab === 'accessories'"
-      (click)="setTab('accessories')"
-    >
-      <i class="bi bi-headphones" aria-hidden="true"></i>
-      <span>Accessories &amp; Parts</span>
-      <span class="tab-badge font-monospace">{{ accessories.length }}</span>
-    </button>
-
-    <button
-      type="button"
-      class="tab-btn"
-      [class.active]="activeTab === 'reorder'"
-      (click)="setTab('reorder')"
-    >
-      <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
-      <span>Reorder Watchlist</span>
-      <span class="badge bg-warning text-dark font-monospace" style="font-size: 0.7rem;">4 Alerts</span>
-    </button>
-  </div>
-
-  <!-- =========================================================================
-       TAB 1: MOBILE PHONES TABLE
-       ========================================================================= -->
-  <section *ngIf="activeTab === 'phones'" class="table-container mb-4" aria-label="Mobile Phones Catalog">
-    <!-- Filters Toolbar -->
-    <div class="table-toolbar">
-      <div class="d-flex align-items-center gap-2 flex-grow-1 flex-wrap">
-        <!-- Search Input -->
-        <div class="search-input-group" style="inline-size: 280px;">
-          <i class="bi bi-search search-icon" aria-hidden="true"></i>
-          <input
-            type="search"
-            class="app-input"
-            placeholder="Search by model, brand, IMEI..."
-            [formControl]="phoneSearch"
-          />
+  <!-- Navigation Tabs -->
+  <ul class="nav nav-tabs-clean d-flex flex-wrap mb-4" role="tablist">
+    <li class="nav-item" *ngIf="canViewOverview">
+      <a
+        routerLink="/inventory/overview"
+        routerLinkActive="active"
+        class="nav-link"
+        [class.active]="activeTab === 'overview'"
+        (click)="setTab('overview', $event)"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-speedometer2 tab-icon"></i>
+          <div class="text-start">
+            <div class="tab-title">Overview &amp; Valuation</div>
+            <div class="tab-desc d-none d-md-block">View inventory summaries and total stock valuation.</div>
+          </div>
         </div>
-
-        <!-- Brand Filter -->
-        <select class="app-input" style="inline-size: 150px;" [(ngModel)]="selectedBrand" (ngModelChange)="applyPhoneFilters()">
-          <option value="All">All Brands</option>
-          <option value="Apple">Apple</option>
-          <option value="Samsung">Samsung</option>
-          <option value="Google">Google</option>
-          <option value="Xiaomi">Xiaomi</option>
-        </select>
-
-        <!-- Condition Filter -->
-        <select class="app-input" style="inline-size: 170px;" [(ngModel)]="selectedCondition" (ngModelChange)="applyPhoneFilters()">
-          <option value="All">All Conditions</option>
-          <option value="Brand New">Brand New</option>
-          <option value="Pre-Owned Grade A">Pre-Owned Grade A</option>
-          <option value="Pre-Owned Grade B">Pre-Owned Grade B</option>
-        </select>
-
-        <!-- Status Filter -->
-        <select class="app-input" style="inline-size: 140px;" [(ngModel)]="selectedStatus" (ngModelChange)="applyPhoneFilters()">
-          <option value="All">All Statuses</option>
-          <option value="In Stock">In Stock</option>
-          <option value="Reserved">Reserved</option>
-          <option value="Sold">Sold</option>
-        </select>
-      </div>
-
-      <div class="d-flex align-items-center gap-2">
-        <span class="badge bg-light text-secondary border small">
-          Showing {{ filteredPhones.length }} of {{ phones.length }} devices
-        </span>
-      </div>
-    </div>
-
-    <!-- Table -->
-    <div class="data-table-wrapper">
-      <table class="app-table">
-        <thead>
-          <tr>
-            <th scope="col" style="inline-size: 26%;">Device Model &amp; Specs</th>
-            <th scope="col" style="inline-size: 20%;">IMEI 1 (Hardware Serial)</th>
-            <th scope="col" style="inline-size: 14%;">Condition</th>
-            <th scope="col" style="inline-size: 10%;">Battery</th>
-            <th scope="col" class="col-numeric" style="inline-size: 10%;">Wholesale</th>
-            <th scope="col" class="col-numeric" style="inline-size: 10%;">Retail</th>
-            <th scope="col" style="inline-size: 10%;">Status</th>
-            <th scope="col" class="text-end" style="inline-size: 10%;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let phone of filteredPhones" (click)="openPhoneDrawer(phone)" style="cursor: pointer;">
-            <td>
-              <div class="d-flex align-items-center gap-2">
-                <div class="brand-icon-sm rounded bg-light border p-1 text-center font-monospace small fw-bold" style="inline-size: 2rem;">
-                  {{ phone.brand.substring(0, 3).toUpperCase() }}
-                </div>
-                <div>
-                  <div class="fw-bold text-dark lh-sm">{{ phone.brand }} {{ phone.model }}</div>
-                  <small class="text-muted">{{ phone.storage }} &middot; {{ phone.ram }} &middot; {{ phone.color }}</small>
-                </div>
-              </div>
-            </td>
-            <td>
-              <span class="font-monospace fw-semibold text-dark">{{ phone.imei1 }}</span>
-              <small *ngIf="phone.imei2" class="d-block text-muted font-monospace" style="font-size: 0.7rem;">
-                SIM 2: {{ phone.imei2 }}
-              </small>
-            </td>
-            <td>
-              <span
-                class="badge"
-                [ngClass]="phone.condition === 'Brand New' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-secondary-subtle text-dark border'"
-              >
-                {{ phone.condition }}
-              </span>
-            </td>
-            <td>
-              <span class="small font-monospace fw-semibold" [ngClass]="(phone.batteryHealth || 100) >= 90 ? 'text-success' : 'text-warning'">
-                <i class="bi bi-battery-charging me-1"></i>{{ phone.batteryHealth || 100 }}%
-              </span>
-            </td>
-            <td class="col-numeric col-mono text-secondary">
-              ${{ phone.purchasePrice | number:'1.2-2' }}
-            </td>
-            <td class="col-numeric col-mono fw-bold text-dark">
-              ${{ phone.sellingPrice | number:'1.2-2' }}
-            </td>
-            <td>
-              <app-status-badge
-                [label]="phone.status"
-                [tone]="phone.status === 'In Stock' ? 'success' : (phone.status === 'Reserved' ? 'brand' : 'neutral')"
-              ></app-status-badge>
-            </td>
-            <td class="text-end" (click)="$event.stopPropagation()">
-              <div class="d-inline-flex gap-1">
-                <button
-                  type="button"
-                  class="btn-app btn-app-subtle btn-app-sm text-primary"
-                  (click)="openPhoneDrawer(phone)"
-                  title="Inspect Full Specifications"
-                >
-                  <i class="bi bi-layout-sidebar-reverse" aria-hidden="true"></i>
-                </button>
-                <button
-                  type="button"
-                  class="btn-app btn-app-subtle btn-app-sm text-danger"
-                  (click)="confirmDeletePhone(phone)"
-                  title="Remove device"
-                >
-                  <i class="bi bi-trash" aria-hidden="true"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="table-pagination">
-      <span>Page 1 of 1 &middot; 7 items listed</span>
-      <div class="d-flex align-items-center gap-2">
-        <button type="button" class="btn-app btn-app-secondary btn-app-sm" disabled>Previous</button>
-        <button type="button" class="btn-app btn-app-secondary btn-app-sm" disabled>Next</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- =========================================================================
-       TAB 2: ACCESSORIES & PARTS TABLE
-       ========================================================================= -->
-  <section *ngIf="activeTab === 'accessories'" class="table-container mb-4" aria-label="Accessories Catalog">
-    <div class="table-toolbar">
-      <div class="d-flex align-items-center gap-2 flex-grow-1 flex-wrap">
-        <div class="search-input-group" style="inline-size: 280px;">
-          <i class="bi bi-search search-icon" aria-hidden="true"></i>
-          <input
-            type="search"
-            class="app-input"
-            placeholder="Search accessory name, SKU, barcode..."
-            [formControl]="accessorySearch"
-          />
-        </div>
-
-        <select class="app-input" style="inline-size: 200px;" [(ngModel)]="selectedCategory" (ngModelChange)="applyAccessoryFilters()">
-          <option value="All">All Categories</option>
-          <option value="Chargers & Adapters">Chargers &amp; Adapters</option>
-          <option value="Cases & Protection">Cases &amp; Protection</option>
-          <option value="Screen Protectors">Screen Protectors</option>
-          <option value="Audio & Wearables">Audio &amp; Wearables</option>
-          <option value="Power Banks">Power Banks</option>
-        </select>
-
-        <div class="form-check ms-2">
-          <input
-            id="onlyLowStockCheck"
-            type="checkbox"
-            class="form-check-input"
-            [(ngModel)]="onlyLowStock"
-            (ngModelChange)="applyAccessoryFilters()"
-          />
-          <label for="onlyLowStockCheck" class="form-check-label small text-secondary">
-            Low Stock Only (&le; Min Threshold)
-          </label>
-        </div>
-      </div>
-
-      <span class="badge bg-light text-secondary border small">
-        Showing {{ filteredAccessories.length }} products
-      </span>
-    </div>
-
-    <div class="data-table-wrapper">
-      <table class="app-table">
-        <thead>
-          <tr>
-            <th scope="col" style="inline-size: 30%;">Product Item &amp; Brand</th>
-            <th scope="col" style="inline-size: 15%;">SKU Code</th>
-            <th scope="col" style="inline-size: 15%;">Category</th>
-            <th scope="col" class="col-numeric" style="inline-size: 10%;">Cost</th>
-            <th scope="col" class="col-numeric" style="inline-size: 10%;">Retail</th>
-            <th scope="col" class="text-center" style="inline-size: 10%;">Stock Qty</th>
-            <th scope="col" style="inline-size: 10%;">Stock Status</th>
-            <th scope="col" class="text-end">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let acc of filteredAccessories">
-            <td>
-              <div class="fw-bold text-dark lh-sm">{{ acc.name }}</div>
-              <small class="text-muted font-monospace">UPC/EAN: {{ acc.barcode }}</small>
-            </td>
-            <td class="col-mono text-dark fw-semibold">{{ acc.sku }}</td>
-            <td>
-              <span class="badge bg-light text-secondary border small">{{ acc.category }}</span>
-            </td>
-            <td class="col-numeric col-mono text-secondary">${{ acc.purchasePrice | number:'1.2-2' }}</td>
-            <td class="col-numeric col-mono fw-bold text-dark">${{ acc.sellingPrice | number:'1.2-2' }}</td>
-            <td class="text-center">
-              <div class="d-inline-flex align-items-center gap-1">
-                <button
-                  type="button"
-                  class="btn btn-sm btn-outline-secondary py-0 px-1"
-                  (click)="adjustAccessoryStock(acc, -1)"
-                  title="Decrement stock"
-                >
-                  -
-                </button>
-                <span class="font-monospace fw-bold px-1" [ngClass]="acc.quantity <= acc.minThreshold ? 'text-danger' : 'text-dark'">
-                  {{ acc.quantity }}
-                </span>
-                <button
-                  type="button"
-                  class="btn btn-sm btn-outline-secondary py-0 px-1"
-                  (click)="adjustAccessoryStock(acc, 1)"
-                  title="Increment stock"
-                >
-                  +
-                </button>
-              </div>
-            </td>
-            <td>
-              <app-status-badge
-                [label]="acc.quantity <= acc.minThreshold ? 'Low Stock' : 'In Stock'"
-                [tone]="acc.quantity <= acc.minThreshold ? 'warning' : 'success'"
-              ></app-status-badge>
-            </td>
-            <td class="text-end">
-              <button
-                type="button"
-                class="btn-app btn-app-subtle btn-app-sm text-danger"
-                (click)="confirmDeleteAccessory(acc)"
-                title="Delete product"
-              >
-                <i class="bi bi-trash" aria-hidden="true"></i>
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- =========================================================================
-       TAB 3: REORDER WATCHLIST
-       ========================================================================= -->
-  <section *ngIf="activeTab === 'reorder'" class="app-card mb-4" aria-label="Reorder Watchlist">
-    <div class="app-card-header">
-      <h2 class="app-card-title text-warning">
-        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
-        <span>Stock Replenishment &amp; Purchase Recommendations</span>
-      </h2>
-      <span class="badge bg-warning-subtle text-warning border border-warning-subtle font-monospace">4 items below threshold</span>
-    </div>
-
-    <div class="app-card-body p-4">
-      <p class="text-secondary small mb-4">
-        The following hardware and accessory products have fallen below safe shop inventory minimums. Automated purchase orders can be dispatched to your assigned wholesale distributor.
-      </p>
-
-      <div class="row g-3">
-        <div class="col-12 col-md-6">
-          <div class="p-3 rounded border bg-light h-100 d-flex flex-column justify-content-between">
-            <div>
-              <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="badge bg-danger-subtle text-danger border">Critical Shortage</span>
-                <span class="font-monospace text-muted small">BAS-PB-20K-65W</span>
-              </div>
-              <h3 class="h6 fw-bold text-dark mb-1">Baseus 20,000mAh 65W Power Bank</h3>
-              <div class="small text-secondary mb-3">
-                Current Stock: <strong class="text-danger font-monospace">4 Units</strong> &middot; Minimum Safe Threshold: <strong>8 Units</strong>
-              </div>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="canViewPhones">
+      <a
+        routerLink="/inventory/phones"
+        routerLinkActive="active"
+        class="nav-link"
+        [class.active]="activeTab === 'phones'"
+        (click)="setTab('phones', $event)"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-phone tab-icon"></i>
+          <div class="text-start">
+            <div class="tab-title d-flex align-items-center gap-1">
+              <span>Mobile Phones</span>
+              <span *ngIf="phones.length > 0" class="badge rounded-pill bg-light text-dark border">{{ phones.length }}</span>
             </div>
-            <div class="d-flex align-items-center justify-content-between pt-2 border-top">
-              <span class="small text-muted">Wholesale Supplier: Apex Global Distribution</span>
-              <button type="button" class="btn-app btn-app-primary btn-app-sm" (click)="issuePO('Apex Global Distribution', 15, 'PO-984')">
-                <i class="bi bi-cart-plus"></i> Order 15 Units
-              </button>
+            <div class="tab-desc d-none d-md-block">Manage and review mobile phone inventory.</div>
+          </div>
+        </div>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="canViewAccessories">
+      <a
+        routerLink="/inventory/accessories"
+        routerLinkActive="active"
+        class="nav-link"
+        [class.active]="activeTab === 'accessories'"
+        (click)="setTab('accessories', $event)"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-headphones tab-icon"></i>
+          <div class="text-start">
+            <div class="tab-title d-flex align-items-center gap-1">
+              <span>Accessories &amp; Parts</span>
+              <span *ngIf="accessories.length > 0" class="badge rounded-pill bg-light text-dark border">{{ accessories.length }}</span>
+            </div>
+            <div class="tab-desc d-none d-md-block">Manage accessories, product details, and stock.</div>
+          </div>
+        </div>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="canViewPurchases">
+      <a
+        routerLink="/inventory/purchases"
+        routerLinkActive="active"
+        class="nav-link"
+        [class.active]="activeTab === 'purchases'"
+        (click)="setTab('purchases', $event)"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-box-seam tab-icon"></i>
+          <div class="text-start">
+            <div class="tab-title">Purchases &amp; Inward POs</div>
+            <div class="tab-desc d-none d-md-block">Record purchase orders and receive vendor stock.</div>
+          </div>
+        </div>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="canViewSuppliers">
+      <a
+        routerLink="/inventory/suppliers"
+        routerLinkActive="active"
+        class="nav-link"
+        [class.active]="activeTab === 'suppliers'"
+        (click)="setTab('suppliers', $event)"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-truck tab-icon"></i>
+          <div class="text-start">
+            <div class="tab-title">Suppliers</div>
+            <div class="tab-desc d-none d-md-block">Manage supplier information and relationships.</div>
+          </div>
+        </div>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="canViewAdjustments">
+      <a
+        routerLink="/inventory/adjustments"
+        routerLinkActive="active"
+        class="nav-link"
+        [class.active]="activeTab === 'adjustments'"
+        (click)="setTab('adjustments', $event)"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-journal-text tab-icon"></i>
+          <div class="text-start">
+            <div class="tab-title">Stock Adjustments &amp; Logs</div>
+            <div class="tab-desc d-none d-md-block">Track inventory corrections and stock movements.</div>
+          </div>
+        </div>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="canViewStockTakes">
+      <a
+        routerLink="/inventory/stock-takes"
+        routerLinkActive="active"
+        class="nav-link"
+        [class.active]="activeTab === 'stock-takes'"
+        (click)="setTab('stock-takes', $event)"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-clipboard-check tab-icon"></i>
+          <div class="text-start">
+            <div class="tab-title">Physical Stock-Taking</div>
+            <div class="tab-desc d-none d-md-block">Conduct physical inventory audits and count reconciliations.</div>
+          </div>
+        </div>
+      </a>
+    </li>
+  </ul>
+
+  <!-- ========================================== -->
+  <!-- TAB 1: OVERVIEW & VALUATION                -->
+  <!-- ========================================== -->
+  <div *ngIf="activeTab === 'overview' && canViewOverview">
+    <div *ngIf="loadingSummary" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status"></div>
+      <div class="text-muted small mt-2">Computing real-time FIFO stock valuation...</div>
+    </div>
+
+    <div *ngIf="!loadingSummary && summary">
+      <!-- High Density Valuation & Inventory KPI Cards -->
+      <div class="row g-3 mb-4">
+        <!-- Total FIFO Valuation (Admin Only) -->
+        <div class="col-12" [ngClass]="auth.isAdmin() ? 'col-md-4' : 'd-none'">
+          <div class="kpi-card h-100">
+            <div class="kpi-label d-flex justify-content-between align-items-center">
+              <span>Total Stock Valuation</span>
+              <i class="bi bi-cash-stack text-success fs-5"></i>
+            </div>
+            <div class="kpi-value font-monospace">${{ summary.totalInventoryValuation | number: '1.2-2' }}</div>
+            <div class="kpi-sub">
+              Phones: ${{ summary.phones.valuation | number: '1.0-0' }} &bull; Accessories: ${{ summary.accessories.valuation | number: '1.0-0' }} (FIFO)
             </div>
           </div>
         </div>
 
-        <div class="col-12 col-md-6">
-          <div class="p-3 rounded border bg-light h-100 d-flex flex-column justify-content-between">
-            <div>
-              <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="badge bg-warning-subtle text-warning border">Replenish Soon</span>
-                <span class="font-monospace text-muted small">SAM-PWR-45W</span>
-              </div>
-              <h3 class="h6 fw-bold text-dark mb-1">Samsung 45W Type-C Super Fast Wall Charger</h3>
-              <div class="small text-secondary mb-3">
-                Current Stock: <strong class="text-warning font-monospace">5 Units</strong> &middot; Minimum Safe Threshold: <strong>12 Units</strong>
-              </div>
+        <!-- Phones In Stock -->
+        <div class="col-12" [ngClass]="auth.isAdmin() ? 'col-md-4' : 'col-md-6'">
+          <div class="kpi-card h-100">
+            <div class="kpi-label d-flex justify-content-between align-items-center">
+              <span>Mobile Phones In Stock</span>
+              <i class="bi bi-phone text-primary fs-5"></i>
             </div>
-            <div class="d-flex align-items-center justify-content-between pt-2 border-top">
-              <span class="small text-muted">Supplier: Samsung Direct Logistics</span>
-              <button type="button" class="btn-app btn-app-primary btn-app-sm" (click)="issuePO('Samsung Direct Logistics', 25, 'PO-985')">
-                <i class="bi bi-cart-plus"></i> Order 25 Units
-              </button>
+            <div class="kpi-value font-monospace">{{ summary.phones.totalInStock }}</div>
+            <div class="kpi-sub text-muted">
+              <span class="badge bg-success-subtle text-success border me-1">New: {{ summary.phones.newCount }}</span>
+              <span class="badge bg-warning-subtle text-warning border">Pre-Owned: {{ summary.phones.usedCount }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accessories Quantity -->
+        <div class="col-12" [ngClass]="auth.isAdmin() ? 'col-md-4' : 'col-md-6'">
+          <div class="kpi-card h-100">
+            <div class="kpi-label d-flex justify-content-between align-items-center">
+              <span>Accessories Units</span>
+              <i class="bi bi-headphones text-info fs-5"></i>
+            </div>
+            <div class="kpi-value font-monospace">{{ summary.accessories.totalQuantity }} <span class="fs-6 fw-normal text-muted">units</span></div>
+            <div class="kpi-sub">
+              {{ summary.accessories.totalProducts }} catalog items tracked
+              <span *ngIf="summary.accessories.lowStockCount > 0" class="badge bg-warning-subtle text-warning border ms-1">{{ summary.accessories.lowStockCount }} Low</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two column recent lists: Recent Purchases & Recent Stock Items -->
+      <div class="row g-4">
+        <!-- Recent POs -->
+        <div class="col-12 col-lg-6">
+          <div class="card border shadow-sm h-100">
+            <div class="card-header bg-white py-3 px-3 d-flex justify-content-between align-items-center">
+              <h6 class="mb-0 fw-bold text-dark">Recent Purchase Inward Orders</h6>
+              <button class="btn btn-sm btn-link text-decoration-none p-0" (click)="setTab('purchases')">View All</button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-clean table-sm mb-0">
+                <thead>
+                  <tr>
+                    <th>Ref #</th>
+                    <th>Supplier</th>
+                    <th>Date</th>
+                    <th>Total</th>
+                    <th class="text-end">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let p of summary.recentPurchases">
+                    <td class="fw-semibold">{{ p.reference_no }}</td>
+                    <td class="text-muted">{{ p.supplier_name }}</td>
+                    <td class="text-muted small">{{ p.purchase_date }}</td>
+                    <td class="fw-medium">${{ p.total_amount | number: '1.2-2' }}</td>
+                    <td class="text-end">
+                      <span
+                        class="badge rounded-pill"
+                        [ngClass]="p.status === 'CONFIRMED' ? 'bg-success' : 'bg-warning text-dark'"
+                      >
+                        {{ p.status }}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr *ngIf="summary.recentPurchases.length === 0">
+                    <td colspan="5" class="text-center py-4 text-muted small">No recent purchase orders logged.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Serialized Phones Registered -->
+        <div class="col-12 col-lg-6">
+          <div class="card border shadow-sm h-100">
+            <div class="card-header bg-white py-3 px-3 d-flex justify-content-between align-items-center">
+              <h6 class="mb-0 fw-bold text-dark">Recent Serialized Devices Registered</h6>
+              <button class="btn btn-sm btn-link text-decoration-none p-0" (click)="setTab('phones')">View Catalog</button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-clean table-sm mb-0">
+                <thead>
+                  <tr>
+                    <th>Device</th>
+                    <th>IMEI 1</th>
+                    <th>Condition</th>
+                    <th>Retail Price</th>
+                    <th class="text-end">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let ph of summary.recentPhones">
+                    <td class="fw-semibold">{{ ph.brand }} {{ ph.model }}</td>
+                    <td><span class="imei-badge">{{ ph.imei1 }}</span></td>
+                    <td>
+                      <span
+                        class="badge rounded-pill"
+                        [ngClass]="ph.condition === 'NEW' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-warning-subtle text-warning border border-warning-subtle'"
+                      >
+                        {{ ph.condition }}
+                      </span>
+                    </td>
+                    <td class="fw-bold">${{ ph.selling_price | number: '1.2-2' }}</td>
+                    <td class="text-end">
+                      <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                        {{ ph.status }}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr *ngIf="summary.recentPhones.length === 0">
+                    <td colspan="5" class="text-center py-4 text-muted small">No phones registered yet.</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </section>
-</div>
+  </div>
 
-<!-- LINEAR-STYLE SLIDE-OVER DEVICE INSPECTION DRAWER -->
-<app-device-detail-drawer
-  [isOpen]="drawerOpen"
-  [device]="selectedPhoneForDrawer"
-  (closeDrawer)="closePhoneDrawer()"
-></app-device-detail-drawer>
+  <!-- ========================================== -->
+  <!-- TAB 2: MOBILE PHONES (SERIALIZED)         -->
+  <!-- ========================================== -->
+  <div *ngIf="activeTab === 'phones' && canViewPhones">
+    <!-- Filter bar -->
+    <div class="card border shadow-sm mb-3">
+      <div class="card-body p-3">
+        <div class="row g-2 align-items-center">
+          <div class="col-12 col-md-4">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+              <input
+                type="text"
+                class="form-control border-start-0"
+                placeholder="Search Brand, Model, IMEI1, IMEI2..."
+                [formControl]="phoneSearch"
+              />
+            </div>
+          </div>
 
-<!-- MODAL: ADD MOBILE PHONE (IMEI SERIALIZED) -->
-<div *ngIf="showAddPhoneModal" class="drawer-backdrop" (click)="showAddPhoneModal = false" aria-hidden="true"></div>
-<div *ngIf="showAddPhoneModal" class="modal-dialog-custom shadow-lg" style="inline-size: 580px;" role="dialog" aria-modal="true" aria-label="Register Serialized Phone">
-  <div class="modal-content bg-white p-4 rounded-3 border">
-    <div class="d-flex align-items-center justify-content-between pb-3 border-bottom mb-3">
+          <div class="col-6 col-md-2">
+            <select class="form-select form-select-sm" [(ngModel)]="selectedBrand" (change)="applyPhoneFilters()">
+              <option value="All">All Brands</option>
+              <option *ngFor="let b of availableBrands" [value]="b">{{ b }}</option>
+            </select>
+          </div>
+
+          <div class="col-6 col-md-2">
+            <select class="form-select form-select-sm" [(ngModel)]="selectedCondition" (change)="applyPhoneFilters()">
+              <option value="All">All Conditions</option>
+              <option value="NEW">Brand New</option>
+              <option value="USED">Pre-Owned / Used</option>
+            </select>
+          </div>
+
+          <div class="col-6 col-md-2">
+            <select class="form-select form-select-sm" [(ngModel)]="selectedStatus" (change)="applyPhoneFilters()">
+              <option value="All">All Statuses</option>
+              <option value="IN_STOCK">In Stock</option>
+              <option value="SOLD">Sold</option>
+              <option value="RESERVED">Reserved</option>
+              <option value="UNDER_REPAIR">Under Repair</option>
+              <option value="RETURNED">Returned</option>
+            </select>
+          </div>
+
+          <div class="col-6 col-md-2 text-md-end">
+            <span *ngIf="loadingPhones" class="badge bg-light text-muted border px-2 py-1 small">
+              <span class="spinner-border spinner-border-sm me-1" role="status"></span> Loading...
+            </span>
+            <span *ngIf="!loadingPhones" class="badge bg-light text-dark border px-2 py-1 small">
+              {{ filteredPhones.length }} of {{ phones.length }} devices
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phone inventory table -->
+    <div class="card border shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-clean align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Device / Model</th>
+              <th>Primary IMEI</th>
+              <th>Secondary IMEI</th>
+              <th>Specs (RAM / Storage / Color)</th>
+              <th>Condition &amp; Battery</th>
+              <th *ngIf="auth.isAdmin()">Purchase Cost</th>
+              <th>Retail Price</th>
+              <th>Status</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- 1. Loading State -->
+            <tr *ngIf="loadingPhones">
+              <td [attr.colspan]="auth.isAdmin() ? 9 : 8" class="text-center py-5">
+                <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+                <div class="text-muted small">Loading mobile phones inventory...</div>
+              </td>
+            </tr>
+
+            <!-- 2. Error State -->
+            <tr *ngIf="!loadingPhones && phonesError">
+              <td [attr.colspan]="auth.isAdmin() ? 9 : 8" class="text-center py-5 text-danger">
+                <i class="bi bi-exclamation-triangle fs-2 d-block mb-2 text-danger"></i>
+                <div class="fw-semibold">Failed to load phone inventory.</div>
+                <small class="text-muted d-block mb-3">{{ phonesError }}</small>
+                <button type="button" class="btn btn-sm btn-outline-primary" (click)="loadPhones()">
+                  <i class="bi bi-arrow-clockwise me-1"></i> Retry
+                </button>
+              </td>
+            </tr>
+
+            <!-- 3. Phone Records List & Empty State -->
+            <ng-container *ngIf="!loadingPhones && !phonesError">
+              <tr *ngFor="let phone of filteredPhones">
+                <td>
+                  <div class="fw-bold">{{ phone.brand }} {{ phone.model }}</div>
+                  <small class="text-muted" *ngIf="phone.supplier_name">Supplier: {{ phone.supplier_name }}</small>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    class="imei-badge border-0"
+                    style="cursor: pointer;"
+                    (click)="copyIdentifier(phone.imei1, 'IMEI 1')"
+                    title="Click to copy IMEI 1"
+                  >
+                    <span>{{ phone.imei1 }}</span>
+                    <i class="bi bi-clipboard opacity-50" style="font-size: 0.65rem;"></i>
+                  </button>
+                </td>
+                <td>
+                  <span *ngIf="phone.imei2" class="imei-badge">{{ phone.imei2 }}</span>
+                  <span *ngIf="!phone.imei2" class="text-muted small">&mdash;</span>
+                </td>
+                <td>
+                  <div class="d-flex flex-wrap gap-1">
+                    <span class="spec-badge" *ngIf="phone.ram">{{ phone.ram }}</span>
+                    <span class="spec-badge" *ngIf="phone.storage">{{ phone.storage }}</span>
+                    <span class="spec-badge" *ngIf="phone.color">{{ phone.color }}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="d-flex align-items-center flex-wrap gap-2">
+                    <span
+                      class="badge rounded-pill"
+                      [ngClass]="phone.condition === 'NEW' ? 'bg-success-subtle text-success border' : 'bg-warning-subtle text-warning border'"
+                    >
+                      {{ phone.condition }}
+                    </span>
+                    <div *ngIf="phone.battery_health" class="battery-meter" title="Battery Maximum Capacity">
+                      <div class="battery-bar">
+                        <div
+                          class="battery-fill"
+                          [style.width.%]="phone.battery_health"
+                          [ngClass]="phone.battery_health >= 90 ? 'bg-success' : (phone.battery_health >= 80 ? 'bg-warning' : 'bg-danger')"
+                        ></div>
+                      </div>
+                      <span>{{ phone.battery_health }}%</span>
+                    </div>
+                  </div>
+                </td>
+                <td *ngIf="auth.isAdmin()" class="text-muted font-monospace">${{ phone.purchase_cost | number: '1.2-2' }}</td>
+                <td class="fw-bold font-monospace">${{ phone.selling_price | number: '1.2-2' }}</td>
+                <td>
+                  <span
+                    class="badge rounded-pill"
+                    [ngClass]="{
+                      'bg-success': phone.status === 'IN_STOCK',
+                      'bg-secondary': phone.status === 'SOLD',
+                      'bg-warning text-dark': phone.status === 'RESERVED',
+                      'bg-danger': phone.status === 'UNDER_REPAIR',
+                      'bg-info text-dark': phone.status === 'RETURNED'
+                    }"
+                  >
+                    {{ phone.status }}
+                  </span>
+                </td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      title="Inspect Device Drawer"
+                      (click)="inspectPhone(phone.id)"
+                    >
+                      <i class="bi bi-eye"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      title="Download Thermal Barcode Label PDF"
+                      [disabled]="printingLabelId === phone.id"
+                      (click)="printBarcodeLabel('PHONE', phone.id, phone.imei1)"
+                    >
+                      <i class="bi bi-upc-scan"></i>
+                    </button>
+                    <button
+                      *ngIf="auth.isAdmin()"
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      title="Edit Phone Record"
+                      (click)="openEditPhone(phone)"
+                    >
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button
+                      *ngIf="auth.isAdmin()"
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      title="Manual Stock Status Adjustment"
+                      (click)="openAdjustmentModal('PHONE', phone.id)"
+                    >
+                      <i class="bi bi-sliders"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- 4. Empty State -->
+              <tr *ngIf="filteredPhones.length === 0">
+                <td [attr.colspan]="auth.isAdmin() ? 9 : 8" class="text-center py-5 text-muted">
+                  <i class="bi bi-phone fs-1 d-block mb-2 text-secondary"></i>
+                  <div class="fw-semibold">No phones match current filter criteria.</div>
+                  <small>Try clearing search terms or register a new phone device.</small>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 3: ACCESSORIES & PARTS (QUANTITY)      -->
+  <!-- ========================================== -->
+  <div *ngIf="activeTab === 'accessories' && canViewAccessories">
+    <div class="card border shadow-sm mb-3">
+      <div class="card-body p-3">
+        <div class="row g-2 align-items-center">
+          <div class="col-12 col-md-5">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+              <input
+                type="text"
+                class="form-control border-start-0"
+                placeholder="Search Name, SKU, Barcode, Brand..."
+                [formControl]="accessorySearch"
+              />
+            </div>
+          </div>
+
+          <div class="col-6 col-md-3">
+            <select class="form-select form-select-sm" [(ngModel)]="selectedCategory" (change)="applyAccessoryFilters()">
+              <option value="All">All Categories</option>
+              <option *ngFor="let cat of categories" [value]="cat.id">{{ cat.name }}</option>
+            </select>
+          </div>
+
+          <div class="col-6 col-md-4 d-flex align-items-center justify-content-end gap-2">
+            <button
+              type="button"
+              class="btn btn-sm"
+              [ngClass]="showLowStockOnly ? 'btn-warning text-dark fw-semibold' : 'btn-outline-secondary'"
+              (click)="showLowStockOnly = !showLowStockOnly; applyAccessoryFilters()"
+            >
+              <i class="bi bi-exclamation-triangle me-1"></i> Low Stock Only
+            </button>
+            <span class="badge bg-light text-dark border px-2 py-1 small">
+              {{ filteredAccessories.length }} items
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accessories data table -->
+    <div class="card border shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-clean align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Accessory Item / Brand</th>
+              <th>Category</th>
+              <th>SKU</th>
+              <th>Barcode</th>
+              <th>Available Units</th>
+              <th>Min Threshold</th>
+              <th *ngIf="auth.isAdmin()">Latest Cost</th>
+              <th>Retail Price</th>
+              <th *ngIf="auth.isAdmin()">FIFO Valuation</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="loadingAccessories">
+              <td [attr.colspan]="auth.isAdmin() ? 10 : 8" class="text-center py-5">
+                <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+                <div class="text-muted small">Loading accessories inventory...</div>
+              </td>
+            </tr>
+            <ng-container *ngIf="!loadingAccessories">
+              <tr *ngFor="let acc of filteredAccessories">
+                <td>
+                  <div class="fw-bold">{{ acc.name }}</div>
+                  <small class="text-muted">{{ acc.brand }} <span *ngIf="acc.model">&bull; {{ acc.model }}</span></small>
+                </td>
+                <td>
+                  <span class="badge bg-light text-dark border">{{ acc.category_name }}</span>
+                </td>
+                <td><span class="sku-badge">{{ acc.sku }}</span></td>
+                <td class="font-monospace small text-muted">{{ acc.barcode || '&mdash;' }}</td>
+                <td>
+                  <span
+                    class="badge border px-2 py-1 font-monospace"
+                    [ngClass]="(acc.available_quantity || 0) <= (acc.min_stock_threshold || 5) ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'"
+                  >
+                    {{ acc.available_quantity || 0 }} units
+                  </span>
+                </td>
+                <td class="text-muted small font-monospace">{{ acc.min_stock_threshold || 5 }} units</td>
+                <td *ngIf="auth.isAdmin()" class="text-muted font-monospace">${{ (acc.purchase_cost || 0) | number: '1.2-2' }}</td>
+                <td class="fw-bold font-monospace">${{ (acc.selling_price || 0) | number: '1.2-2' }}</td>
+                <td *ngIf="auth.isAdmin()" class="fw-semibold text-primary font-monospace">
+                  ${{ (acc.fifo_valuation !== undefined ? acc.fifo_valuation : ((acc.available_quantity || 0) * (acc.purchase_cost || 0))) | number: '1.2-2' }}
+                </td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      title="View FIFO Batches Drawer"
+                      (click)="inspectAccessory(acc.id)"
+                    >
+                      <i class="bi bi-stack"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      title="Download Thermal Barcode Label PDF"
+                      [disabled]="printingLabelId === acc.id"
+                      (click)="printBarcodeLabel('ACCESSORY', acc.id, acc.sku)"
+                    >
+                      <i class="bi bi-upc-scan"></i>
+                    </button>
+                    <button
+                      *ngIf="auth.isAdmin()"
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      title="Edit Item Details"
+                      (click)="openEditAccessory(acc)"
+                    >
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button
+                      *ngIf="auth.isAdmin()"
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      title="Manual Stock Adjustment"
+                      (click)="openAdjustmentModal('ACCESSORY', acc.id)"
+                    >
+                      <i class="bi bi-sliders"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="filteredAccessories.length === 0">
+                <td [attr.colspan]="auth.isAdmin() ? 10 : 8" class="text-center py-5 text-muted">
+                  <i class="bi bi-headphones fs-1 d-block mb-2 text-secondary"></i>
+                  <div class="fw-semibold">No accessories match current filters.</div>
+                  <small>Try clearing search terms or create a new accessory item.</small>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 4: PURCHASES & INWARD POs             -->
+  <!-- ========================================== -->
+  <div *ngIf="activeTab === 'purchases' && canViewPurchases">
+    <div class="card border shadow-sm mb-3">
+      <div class="card-body p-3">
+        <div class="row g-2 align-items-center">
+          <div class="col-12 col-md-5">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+              <input
+                type="text"
+                class="form-control border-start-0"
+                placeholder="Search PO Reference or Supplier..."
+                [formControl]="purchaseSearch"
+                (keyup.enter)="loadPurchases()"
+              />
+            </div>
+          </div>
+
+          <div class="col-6 col-md-3">
+            <select class="form-select form-select-sm" [(ngModel)]="selectedPurchaseStatus" (change)="loadPurchases()">
+              <option value="All">All Statuses</option>
+              <option value="DRAFT">Draft</option>
+              <option value="CONFIRMED">Confirmed (In Stock)</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+
+          <div class="col-6 col-md-4 text-md-end">
+            <button
+              *ngIf="auth.isAdmin()"
+              type="button"
+              class="btn btn-primary btn-sm"
+              (click)="openCreatePo()"
+            >
+              <i class="bi bi-plus-lg me-1"></i> New Purchase Inward Order
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Purchases table -->
+    <div class="card border shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-clean align-middle mb-0">
+          <thead>
+            <tr>
+              <th>PO Reference #</th>
+              <th>Supplier Name</th>
+              <th>Purchase Date</th>
+              <th>Items &amp; Units</th>
+              <th>Subtotal</th>
+              <th>Total Amount</th>
+              <th>Status</th>
+              <th>Recorded By</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="loadingPurchases">
+              <td colspan="9" class="text-center py-5">
+                <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+                <div class="text-muted small">Loading purchase orders...</div>
+              </td>
+            </tr>
+            <ng-container *ngIf="!loadingPurchases">
+              <tr *ngFor="let po of purchases">
+                <td class="fw-bold font-monospace text-dark">{{ po.reference_no }}</td>
+                <td>{{ po.supplier_name }}</td>
+                <td class="text-muted small">{{ po.purchase_date }}</td>
+                <td>
+                  <span class="badge bg-light text-dark border">{{ po.item_count || 0 }} lines</span>
+                  <span class="badge bg-secondary-subtle text-secondary ms-1">{{ po.total_units || 0 }} units</span>
+                </td>
+                <td class="text-muted">${{ po.subtotal | number: '1.2-2' }}</td>
+                <td class="fw-bold text-dark">${{ po.total_amount | number: '1.2-2' }}</td>
+                <td>
+                  <span
+                    class="badge rounded-pill"
+                    [ngClass]="{
+                      'bg-warning text-dark': po.status === 'DRAFT',
+                      'bg-success': po.status === 'CONFIRMED',
+                      'bg-danger': po.status === 'CANCELLED'
+                    }"
+                  >
+                    {{ po.status }}
+                  </span>
+                </td>
+                <td class="text-muted small">{{ po.created_by_name }}</td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      title="View PO Details"
+                      (click)="viewPurchaseDetail(po.id)"
+                    >
+                      <i class="bi bi-eye"></i>
+                    </button>
+                    <button
+                      *ngIf="auth.isAdmin() && po.status === 'DRAFT'"
+                      type="button"
+                      class="btn btn-success"
+                      title="Confirm Purchase & Inward Stock"
+                      (click)="confirmPurchase(po.id, po.reference_no)"
+                    >
+                      <i class="bi bi-check-lg me-1"></i> Confirm
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="purchases.length === 0">
+                <td colspan="9" class="text-center py-5 text-muted">
+                  <i class="bi bi-box-seam fs-1 d-block mb-2 text-secondary"></i>
+                  <div class="fw-semibold">No purchase orders found.</div>
+                  <small>Create a new purchase order to intake phones and accessories into inventory.</small>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 5: SUPPLIERS DIRECTORY                -->
+  <!-- ========================================== -->
+  <div *ngIf="activeTab === 'suppliers' && canViewSuppliers">
+    <div class="card border shadow-sm mb-3">
+      <div class="card-body p-3">
+        <div class="row g-2 align-items-center">
+          <div class="col-12 col-md-5">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+              <input
+                type="text"
+                class="form-control border-start-0"
+                placeholder="Search Supplier Name, Phone, Contact..."
+                [formControl]="supplierSearch"
+                (keyup.enter)="loadSuppliers()"
+              />
+            </div>
+          </div>
+
+          <div class="col-6 col-md-3">
+            <select class="form-select form-select-sm" [(ngModel)]="selectedSupplierStatus" (change)="loadSuppliers()">
+              <option value="All">All Suppliers</option>
+              <option value="ACTIVE">Active Suppliers</option>
+              <option value="INACTIVE">Inactive</option>
+            </select>
+          </div>
+
+          <div class="col-6 col-md-4 text-md-end">
+            <button
+              *ngIf="auth.isAdmin()"
+              type="button"
+              class="btn btn-primary btn-sm"
+              (click)="openAddSupplier()"
+            >
+              <i class="bi bi-plus-lg me-1"></i> Register Supplier
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Suppliers table -->
+    <div class="card border shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-clean align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Company Name</th>
+              <th>Contact Person</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>Address</th>
+              <th>Total Orders</th>
+              <th>Total Spend</th>
+              <th>Status</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="loadingSuppliers">
+              <td colspan="9" class="text-center py-5">
+                <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+                <div class="text-muted small">Loading suppliers roster...</div>
+              </td>
+            </tr>
+            <ng-container *ngIf="!loadingSuppliers">
+              <tr *ngFor="let sup of suppliers">
+                <td class="fw-bold text-dark">{{ sup.name }}</td>
+                <td>{{ sup.contact_person || '&mdash;' }}</td>
+                <td class="font-monospace small">{{ sup.phone }}</td>
+                <td class="text-muted small">{{ sup.email || '&mdash;' }}</td>
+                <td class="text-muted small text-truncate" style="max-inline-size: 200px;">{{ sup.address || '&mdash;' }}</td>
+                <td><span class="badge bg-light text-dark border">{{ sup.purchase_count || 0 }} orders</span></td>
+                <td class="fw-semibold text-dark">${{ (sup.total_purchases_amount || 0) | number: '1.2-2' }}</td>
+                <td>
+                  <span
+                    class="badge rounded-pill"
+                    [ngClass]="sup.status === 'ACTIVE' ? 'bg-success' : 'bg-secondary'"
+                  >
+                    {{ sup.status }}
+                  </span>
+                </td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <button
+                      *ngIf="auth.isAdmin()"
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      title="Edit Supplier"
+                      (click)="openEditSupplier(sup)"
+                    >
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button
+                      *ngIf="auth.isAdmin()"
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      [title]="sup.status === 'ACTIVE' ? 'Deactivate Supplier' : 'Activate Supplier'"
+                      (click)="toggleSupplierStatus(sup)"
+                    >
+                      <i class="bi" [ngClass]="sup.status === 'ACTIVE' ? 'bi-toggle-on text-success' : 'bi-toggle-off text-muted'"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="suppliers.length === 0">
+                <td colspan="9" class="text-center py-5 text-muted">
+                  <i class="bi bi-truck fs-1 d-block mb-2 text-secondary"></i>
+                  <div class="fw-semibold">No suppliers registered.</div>
+                  <small>Add your first wholesale distributor or supplier contact.</small>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 6: STOCK ADJUSTMENTS & AUDIT LOGS     -->
+  <!-- ========================================== -->
+  <div *ngIf="activeTab === 'adjustments' && canViewAdjustments">
+    <div class="card border shadow-sm mb-3">
+      <div class="card-body p-3">
+        <div class="row g-2 align-items-center">
+          <div class="col-12 col-md-4">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+              <input
+                type="text"
+                class="form-control border-start-0"
+                placeholder="Search Product, Identifier, Reason..."
+                [formControl]="movementSearch"
+              />
+            </div>
+          </div>
+
+          <div class="col-6 col-md-3">
+            <select class="form-select form-select-sm" [(ngModel)]="selectedMovementType" (change)="loadMovements()">
+              <option value="All">All Movement Types</option>
+              <option value="PURCHASE">Purchases / Intake</option>
+              <option value="ADJUSTMENT">Manual Adjustments</option>
+              <option value="STOCK_TAKE">Physical Audits</option>
+              <option value="SALE">POS Sales</option>
+              <option value="RETURN">Customer Returns</option>
+            </select>
+          </div>
+
+          <div class="col-6 col-md-2">
+            <select class="form-select form-select-sm" [(ngModel)]="selectedMovementItemType" (change)="loadMovements()">
+              <option value="All">All Items</option>
+              <option value="PHONE">Phones Only</option>
+              <option value="ACCESSORY">Accessories Only</option>
+            </select>
+          </div>
+
+          <div class="col-12 col-md-3 text-md-end">
+            <button
+              *ngIf="auth.isAdmin()"
+              type="button"
+              class="btn btn-dark btn-sm"
+              (click)="openAdjustmentModal('ACCESSORY')"
+            >
+              <i class="bi bi-sliders me-1"></i> Log Manual Stock Adjustment
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Audit log table -->
+    <div class="card border shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-clean align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Movement Type</th>
+              <th>Item Category</th>
+              <th>Product Name</th>
+              <th>Identifier (IMEI / SKU)</th>
+              <th>Delta</th>
+              <th>Unit Cost</th>
+              <th>Mandatory Reason / Notes</th>
+              <th class="text-end">Performed By</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="loadingMovements">
+              <td colspan="9" class="text-center py-5">
+                <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+                <div class="text-muted small">Loading stock movements audit log...</div>
+              </td>
+            </tr>
+            <ng-container *ngIf="!loadingMovements">
+              <tr *ngFor="let m of movements">
+                <td class="text-muted small">{{ m.created_at | date: 'short' }}</td>
+                <td>
+                  <span
+                    class="badge"
+                    [ngClass]="{
+                      'bg-primary': m.movement_type === 'PURCHASE',
+                      'bg-warning text-dark': m.movement_type === 'ADJUSTMENT',
+                      'bg-info text-dark': m.movement_type === 'STOCK_TAKE',
+                      'bg-success': m.movement_type === 'SALE',
+                      'bg-secondary': m.movement_type === 'RETURN'
+                    }"
+                  >
+                    {{ m.movement_type }}
+                  </span>
+                </td>
+                <td><span class="badge bg-light text-dark border">{{ m.item_type }}</span></td>
+                <td class="fw-semibold text-dark">{{ m.product_name }}</td>
+                <td>
+                  <span *ngIf="m.identifier" class="imei-badge">{{ m.identifier }}</span>
+                  <span *ngIf="!m.identifier" class="text-muted small">&mdash;</span>
+                </td>
+                <td>
+                  <span
+                    class="fw-bold"
+                    [ngClass]="m.quantity_delta > 0 ? 'text-success' : (m.quantity_delta < 0 ? 'text-danger' : 'text-muted')"
+                  >
+                    {{ m.quantity_delta > 0 ? '+' : '' }}{{ m.quantity_delta }}
+                  </span>
+                </td>
+                <td class="text-muted">${{ m.unit_cost | number: '1.2-2' }}</td>
+                <td class="small text-muted">{{ m.reason || '&mdash;' }}</td>
+                <td class="text-end small fw-medium">{{ m.performed_by_name }}</td>
+              </tr>
+              <tr *ngIf="movements.length === 0">
+                <td colspan="9" class="text-center py-5 text-muted">
+                  <i class="bi bi-clock-history fs-1 d-block mb-2 text-secondary"></i>
+                  <div class="fw-semibold">No stock movements recorded.</div>
+                  <small>Stock adjustments, purchases, and sales will appear here automatically.</small>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 7: PHYSICAL STOCK-TAKING AUDITS        -->
+  <!-- ========================================== -->
+  <div *ngIf="activeTab === 'stock-takes' && canViewStockTakes">
+    <div class="d-flex justify-content-between align-items-center mb-3">
       <div>
-        <h2 class="h5 fw-bold mb-0 text-dark">Register Mobile Phone</h2>
-        <small class="text-muted">Unique IMEI registration for hardware tracking &amp; warranty</small>
+        <h5 class="fw-bold mb-0">Physical Stock-Taking Sessions</h5>
+        <small class="text-muted">Count physical stock, identify discrepancies &amp; auto-reconcile balance sheet</small>
       </div>
-      <button type="button" class="btn-close" (click)="showAddPhoneModal = false"></button>
+
+      <button
+        *ngIf="auth.isAdmin()"
+        type="button"
+        class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm"
+        (click)="openNewStockTakeModal()"
+      >
+        <i class="bi bi-plus-lg"></i>
+        <span>Start New Stock-Take Audit</span>
+      </button>
     </div>
 
-    <div class="row g-3 mb-3">
-      <div class="col-6">
-        <label for="pBrand" class="app-form-label">Brand <span class="required-star">*</span></label>
-        <select id="pBrand" class="app-input" [(ngModel)]="newPhone.brand">
-          <option value="Apple">Apple</option>
-          <option value="Samsung">Samsung</option>
-          <option value="Google">Google</option>
-          <option value="Xiaomi">Xiaomi</option>
-          <option value="OnePlus">OnePlus</option>
-        </select>
+    <!-- Sessions list -->
+    <div class="card border shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-clean align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Session Code</th>
+              <th>Audit Title</th>
+              <th>Started By</th>
+              <th>Started At</th>
+              <th>Total Items</th>
+              <th>Discrepancies</th>
+              <th>Status</th>
+              <th>Finalized By</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="loadingStockTakes">
+              <td colspan="9" class="text-center py-4 text-muted">
+                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                <span>Loading stock-taking sessions...</span>
+              </td>
+            </tr>
+            <ng-container *ngIf="!loadingStockTakes">
+              <tr *ngFor="let st of stockTakes">
+                <td class="fw-bold font-monospace text-dark">{{ st.session_code }}</td>
+                <td class="fw-semibold">{{ st.title }}</td>
+                <td class="text-muted small">{{ st.started_by_name }}</td>
+                <td class="text-muted small">{{ st.started_at | date: 'mediumDate' }}</td>
+                <td><span class="badge bg-light text-dark border">{{ st.total_items }} items</span></td>
+                <td>
+                  <span
+                    class="badge px-2 py-1"
+                    [ngClass]="st.discrepancy_count && st.discrepancy_count > 0 ? 'bg-danger' : 'bg-success'"
+                  >
+                    {{ st.discrepancy_count || 0 }} discrepancy
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="badge rounded-pill"
+                    [ngClass]="{
+                      'bg-warning text-dark': st.status === 'IN_PROGRESS',
+                      'bg-success': st.status === 'FINALIZED',
+                      'bg-secondary': st.status === 'CANCELLED'
+                    }"
+                  >
+                    {{ st.status }}
+                  </span>
+                </td>
+                <td class="text-muted small">
+                  <span *ngIf="st.finalized_by_name">{{ st.finalized_by_name }} ({{ st.finalized_at | date: 'shortDate' }})</span>
+                  <span *ngIf="!st.finalized_by_name">&mdash;</span>
+                </td>
+                <td class="text-end">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-primary"
+                    (click)="openStockTakeCountModal(st.id)"
+                  >
+                    <i class="bi bi-clipboard-data me-1"></i>
+                    <span>{{ st.status === 'IN_PROGRESS' ? 'Count Worksheet' : 'View Audit Results' }}</span>
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="stockTakes.length === 0">
+                <td colspan="9" class="text-center py-5 text-muted">
+                  <i class="bi bi-clipboard-check fs-1 d-block mb-2 text-secondary"></i>
+                  <div class="fw-semibold">No stock-taking sessions found.</div>
+                  <small>Start a new physical stock-take to take a full inventory snapshot.</small>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
       </div>
+    </div>
+  </div>
 
-      <div class="col-6">
-        <label for="pModel" class="app-form-label">Model <span class="required-star">*</span></label>
-        <input id="pModel" type="text" class="app-input" placeholder="e.g. iPhone 15 Pro Max" [(ngModel)]="newPhone.model" />
-      </div>
+  <!-- ========================================== -->
+  <!-- MODAL: ADD / EDIT PHONE                    -->
+  <!-- ========================================== -->
+  <div *ngIf="phoneModalOpen" class="modal-backdrop-custom" (click)="phoneModalOpen = false"></div>
+  <div *ngIf="phoneModalOpen" class="modal-dialog-custom modal-lg-custom p-4">
+    <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3">
+      <h5 class="fw-bold mb-0">{{ isEditingPhone ? 'Edit Mobile Phone Record' : 'Register New Serialized Phone' }}</h5>
+      <button type="button" class="btn-close" (click)="phoneModalOpen = false"></button>
+    </div>
 
-      <div class="col-12">
-        <label for="pImei1" class="app-form-label">Primary IMEI 1 (15 Digits) <span class="required-star">*</span></label>
-        <div class="input-group">
-          <span class="input-group-text bg-light font-monospace small"><i class="bi bi-upc"></i></span>
-          <input id="pImei1" type="text" maxlength="15" class="app-input font-monospace fw-semibold" placeholder="354892019482711" [(ngModel)]="newPhone.imei1" />
+    <form (ngSubmit)="savePhone()">
+      <div class="row g-3">
+        <!-- Brand & Model -->
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Brand *</label>
+          <input
+            type="text"
+            class="form-control form-control-sm"
+            [class.is-invalid]="phoneErrors['brand']"
+            [(ngModel)]="phoneForm.brand"
+            (ngModelChange)="phoneErrors['brand'] = ''"
+            name="brand"
+            placeholder="e.g. Apple, Samsung"
+          />
+          <div *ngIf="phoneErrors['brand']" class="invalid-feedback d-block small">
+            {{ phoneErrors['brand'] }}
+          </div>
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Model *</label>
+          <input
+            type="text"
+            class="form-control form-control-sm"
+            [class.is-invalid]="phoneErrors['model']"
+            [(ngModel)]="phoneForm.model"
+            (ngModelChange)="phoneErrors['model'] = ''"
+            name="model"
+            placeholder="e.g. iPhone 16 Pro Max, S24 Ultra"
+          />
+          <div *ngIf="phoneErrors['model']" class="invalid-feedback d-block small">
+            {{ phoneErrors['model'] }}
+          </div>
+        </div>
+
+        <!-- IMEIs -->
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Primary IMEI 1 * (Unique Per Shop)</label>
+          <input
+            type="text"
+            class="form-control form-control-sm font-monospace"
+            [class.is-invalid]="phoneErrors['imei1']"
+            [(ngModel)]="phoneForm.imei1"
+            (ngModelChange)="phoneErrors['imei1'] = ''"
+            name="imei1"
+            placeholder="15-digit IMEI number"
+            [disabled]="isEditingPhone"
+          />
+          <div *ngIf="phoneErrors['imei1']" class="invalid-feedback d-block small">
+            {{ phoneErrors['imei1'] }}
+          </div>
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Secondary IMEI 2 (Optional Dual SIM / eSIM)</label>
+          <input type="text" class="form-control form-control-sm font-monospace" [(ngModel)]="phoneForm.imei2" name="imei2" placeholder="Optional IMEI 2" />
+        </div>
+
+        <!-- Hardware Specs -->
+        <div class="col-12 col-sm-4">
+          <label class="form-label small fw-semibold">RAM</label>
+          <input type="text" class="form-control form-control-sm" [(ngModel)]="phoneForm.ram" name="ram" placeholder="e.g. 8GB, 12GB" />
+        </div>
+
+        <div class="col-12 col-sm-4">
+          <label class="form-label small fw-semibold">Storage Capacity</label>
+          <input type="text" class="form-control form-control-sm" [(ngModel)]="phoneForm.storage" name="storage" placeholder="e.g. 128GB, 256GB, 512GB" />
+        </div>
+
+        <div class="col-12 col-sm-4">
+          <label class="form-label small fw-semibold">Color</label>
+          <input type="text" class="form-control form-control-sm" [(ngModel)]="phoneForm.color" name="color" placeholder="e.g. Titanium, Midnight Black" />
+        </div>
+
+        <!-- Condition & Battery -->
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Condition *</label>
+          <select class="form-select form-select-sm" [(ngModel)]="phoneForm.condition" name="condition">
+            <option value="NEW">Brand New</option>
+            <option value="USED">Pre-Owned / Used</option>
+          </select>
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Battery Health % (Used / Refurbished)</label>
+          <input
+            type="number"
+            appNumberOnly
+            [allowDecimal]="false"
+            min="0"
+            max="100"
+            class="form-control form-control-sm"
+            [class.is-invalid]="phoneErrors['battery_health']"
+            [(ngModel)]="phoneForm.battery_health"
+            (ngModelChange)="phoneErrors['battery_health'] = ''"
+            name="batteryHealth"
+            placeholder="e.g. 100, 92"
+          />
+          <div *ngIf="phoneErrors['battery_health']" class="invalid-feedback d-block small">
+            {{ phoneErrors['battery_health'] }}
+          </div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Purchase Cost ($)</label>
+          <input
+            type="number"
+            appNumberOnly
+            [allowDecimal]="true"
+            step="0.01"
+            min="0"
+            class="form-control form-control-sm"
+            [class.is-invalid]="phoneErrors['purchase_cost']"
+            [(ngModel)]="phoneForm.purchase_cost"
+            (ngModelChange)="phoneErrors['purchase_cost'] = ''"
+            name="purchaseCost"
+          />
+          <div *ngIf="phoneErrors['purchase_cost']" class="invalid-feedback d-block small">
+            {{ phoneErrors['purchase_cost'] }}
+          </div>
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Default Selling Price ($) *</label>
+          <input
+            type="number"
+            appNumberOnly
+            [allowDecimal]="true"
+            step="0.01"
+            min="0"
+            class="form-control form-control-sm"
+            [class.is-invalid]="phoneErrors['selling_price']"
+            [(ngModel)]="phoneForm.selling_price"
+            (ngModelChange)="phoneErrors['selling_price'] = ''"
+            name="sellingPrice"
+          />
+          <div *ngIf="phoneErrors['selling_price']" class="invalid-feedback d-block small">
+            {{ phoneErrors['selling_price'] }}
+          </div>
+        </div>
+
+        <!-- Status & Supplier -->
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Inventory Status</label>
+          <select class="form-select form-select-sm" [(ngModel)]="phoneForm.status" name="status">
+            <option value="IN_STOCK">In Stock (Available for POS Sale)</option>
+            <option value="RESERVED">Reserved</option>
+            <option value="UNDER_REPAIR">Under Repair</option>
+            <option value="SOLD">Sold</option>
+            <option value="RETURNED">Returned</option>
+          </select>
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Supplier</label>
+          <select class="form-select form-select-sm" [(ngModel)]="phoneForm.supplier_id" name="supplierId">
+            <option value="">None / Walk-in Customer Trade-in</option>
+            <option *ngFor="let s of suppliers" [value]="s.id">{{ s.name }}</option>
+          </select>
+        </div>
+
+        <!-- Condition description & notes -->
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Physical Condition / Defects / Accessories Included</label>
+          <input type="text" class="form-control form-control-sm" [(ngModel)]="phoneForm.physical_condition" name="physicalCondition" placeholder="e.g. Minor scratches on back glass; includes original box and cable" />
         </div>
       </div>
 
-      <div class="col-12">
-        <label for="pImei2" class="app-form-label">Secondary IMEI 2 (eSIM / Dual SIM optional)</label>
-        <input id="pImei2" type="text" maxlength="15" class="app-input font-monospace" placeholder="354892019482712" [(ngModel)]="newPhone.imei2" />
+      <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="phoneModalOpen = false">Cancel</button>
+        <button type="submit" class="btn btn-sm btn-primary px-3">
+          <i class="bi bi-check2 me-1"></i> {{ isEditingPhone ? 'Save Changes' : 'Register Device' }}
+        </button>
       </div>
-
-      <div class="col-4">
-        <label for="pStorage" class="app-form-label">Storage</label>
-        <select id="pStorage" class="app-input" [(ngModel)]="newPhone.storage">
-          <option value="128GB">128GB</option>
-          <option value="256GB">256GB</option>
-          <option value="512GB">512GB</option>
-          <option value="1TB">1TB</option>
-        </select>
-      </div>
-
-      <div class="col-4">
-        <label for="pRam" class="app-form-label">RAM</label>
-        <input id="pRam" type="text" class="app-input" placeholder="8GB" [(ngModel)]="newPhone.ram" />
-      </div>
-
-      <div class="col-4">
-        <label for="pColor" class="app-form-label">Color</label>
-        <input id="pColor" type="text" class="app-input" placeholder="Natural Titanium" [(ngModel)]="newPhone.color" />
-      </div>
-
-      <div class="col-6">
-        <label for="pCondition" class="app-form-label">Condition Grade</label>
-        <select id="pCondition" class="app-input" [(ngModel)]="newPhone.condition">
-          <option value="Brand New">Brand New (Sealed)</option>
-          <option value="Pre-Owned Grade A">Pre-Owned Grade A (Pristine)</option>
-          <option value="Pre-Owned Grade B">Pre-Owned Grade B (Minor Wear)</option>
-          <option value="Refurbished">Refurbished</option>
-        </select>
-      </div>
-
-      <div class="col-6">
-        <label for="pBattery" class="app-form-label">Battery Health (%)</label>
-        <input id="pBattery" type="number" min="50" max="100" class="app-input" [(ngModel)]="newPhone.batteryHealth" />
-      </div>
-
-      <div class="col-6">
-        <label for="pCost" class="app-form-label">Wholesale Cost ($)</label>
-        <input id="pCost" type="number" class="app-input font-monospace" [(ngModel)]="newPhone.purchasePrice" />
-      </div>
-
-      <div class="col-6">
-        <label for="pPrice" class="app-form-label">Retail Selling Price ($)</label>
-        <input id="pPrice" type="number" class="app-input font-monospace fw-bold text-primary" [(ngModel)]="newPhone.sellingPrice" />
-      </div>
-    </div>
-
-    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
-      <button type="button" class="btn-app btn-app-secondary" (click)="showAddPhoneModal = false">Cancel</button>
-      <button type="button" class="btn-app btn-app-primary" (click)="savePhone()" [disabled]="!newPhone.model || !newPhone.imei1">
-        Save Device into Stock
-      </button>
-    </div>
+    </form>
   </div>
-</div>
 
-<!-- MODAL: ADD ACCESSORY -->
-<div *ngIf="showAddAccessoryModal" class="drawer-backdrop" (click)="showAddAccessoryModal = false" aria-hidden="true"></div>
-<div *ngIf="showAddAccessoryModal" class="modal-dialog-custom shadow-lg" role="dialog" aria-modal="true" aria-label="Add Accessory">
-  <div class="modal-content bg-white p-4 rounded-3 border">
-    <div class="d-flex align-items-center justify-content-between pb-2 border-bottom mb-3">
-      <h2 class="h5 fw-bold mb-0 text-dark">Add Accessory Stock</h2>
-      <button type="button" class="btn-close" (click)="showAddAccessoryModal = false"></button>
+  <!-- ========================================== -->
+  <!-- MODAL: ADD / EDIT ACCESSORY                -->
+  <!-- ========================================== -->
+  <div *ngIf="accessoryModalOpen" class="modal-backdrop-custom" (click)="accessoryModalOpen = false"></div>
+  <div *ngIf="accessoryModalOpen" class="modal-dialog-custom p-4">
+    <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3">
+      <h5 class="fw-bold mb-0">{{ isEditingAccessory ? 'Edit Accessory Item' : 'Add New Accessory Product' }}</h5>
+      <button type="button" class="btn-close" (click)="accessoryModalOpen = false"></button>
     </div>
 
-    <div class="row g-3 mb-3">
-      <div class="col-12">
-        <label for="accName" class="app-form-label">Accessory Name <span class="required-star">*</span></label>
-        <input id="accName" type="text" class="app-input" placeholder="e.g. MagSafe Wireless Car Charger" [(ngModel)]="newAccessory.name" />
+    <form (ngSubmit)="saveAccessory()">
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Product Name *</label>
+          <input
+            type="text"
+            class="form-control form-control-sm"
+            [class.is-invalid]="accessoryErrors['name']"
+            [(ngModel)]="accessoryForm.name"
+            (ngModelChange)="accessoryErrors['name'] = ''"
+            name="accName"
+            placeholder="e.g. Anker 20W USB-C Nano Charger"
+          />
+          <div *ngIf="accessoryErrors['name']" class="invalid-feedback d-block small">
+            {{ accessoryErrors['name'] }}
+          </div>
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Category *</label>
+          <select
+            class="form-select form-select-sm"
+            [class.is-invalid]="accessoryErrors['categoryId']"
+            [(ngModel)]="accessoryForm.categoryId"
+            (ngModelChange)="accessoryErrors['categoryId'] = ''"
+            name="accCategory"
+          >
+            <option *ngFor="let cat of categories" [value]="cat.id">{{ cat.name }}</option>
+          </select>
+          <div *ngIf="accessoryErrors['categoryId']" class="invalid-feedback d-block small">
+            {{ accessoryErrors['categoryId'] }}
+          </div>
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Brand *</label>
+          <input type="text" class="form-control form-control-sm" [(ngModel)]="accessoryForm.brand" name="accBrand" placeholder="e.g. Anker, Apple, Spigen" />
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">SKU (Unique In Shop) *</label>
+          <input
+            type="text"
+            class="form-control form-control-sm font-monospace text-uppercase"
+            [class.is-invalid]="accessoryErrors['sku']"
+            [(ngModel)]="accessoryForm.sku"
+            (ngModelChange)="accessoryErrors['sku'] = ''"
+            name="accSku"
+            placeholder="e.g. CHG-ANK-20W"
+            [disabled]="isEditingAccessory"
+          />
+          <div *ngIf="accessoryErrors['sku']" class="invalid-feedback d-block small">
+            {{ accessoryErrors['sku'] }}
+          </div>
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Barcode / UPC</label>
+          <input type="text" class="form-control form-control-sm font-monospace" [(ngModel)]="accessoryForm.barcode" name="accBarcode" placeholder="Scan or enter barcode" />
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Unit Purchase Cost ($)</label>
+          <input
+            type="number"
+            appNumberOnly
+            [allowDecimal]="true"
+            step="0.01"
+            min="0"
+            class="form-control form-control-sm"
+            [class.is-invalid]="accessoryErrors['purchaseCost']"
+            [(ngModel)]="accessoryForm.purchaseCost"
+            (ngModelChange)="accessoryErrors['purchaseCost'] = ''"
+            name="accCost"
+          />
+          <div *ngIf="accessoryErrors['purchaseCost']" class="invalid-feedback d-block small">
+            {{ accessoryErrors['purchaseCost'] }}
+          </div>
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Retail Selling Price ($) *</label>
+          <input
+            type="number"
+            appNumberOnly
+            [allowDecimal]="true"
+            step="0.01"
+            min="0"
+            class="form-control form-control-sm"
+            [class.is-invalid]="accessoryErrors['sellingPrice']"
+            [(ngModel)]="accessoryForm.sellingPrice"
+            (ngModelChange)="accessoryErrors['sellingPrice'] = ''"
+            name="accPrice"
+          />
+          <div *ngIf="accessoryErrors['sellingPrice']" class="invalid-feedback d-block small">
+            {{ accessoryErrors['sellingPrice'] }}
+          </div>
+        </div>
+
+        <div class="col-12 col-sm-6" *ngIf="!isEditingAccessory">
+          <label class="form-label small fw-semibold">Initial Opening Stock (Units)</label>
+          <input
+            type="number"
+            appNumberOnly
+            [allowDecimal]="false"
+            min="0"
+            class="form-control form-control-sm"
+            [(ngModel)]="accessoryForm.initialQuantity"
+            name="accQty"
+          />
+          <small class="text-muted" style="font-size: 0.7rem;">Creates initial FIFO batch</small>
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Minimum Stock Threshold *</label>
+          <input
+            type="number"
+            appNumberOnly
+            [allowDecimal]="false"
+            min="0"
+            class="form-control form-control-sm"
+            [class.is-invalid]="accessoryErrors['minStockThreshold']"
+            [(ngModel)]="accessoryForm.minStockThreshold"
+            (ngModelChange)="accessoryErrors['minStockThreshold'] = ''"
+            name="accThreshold"
+          />
+          <div *ngIf="accessoryErrors['minStockThreshold']" class="invalid-feedback d-block small">
+            {{ accessoryErrors['minStockThreshold'] }}
+          </div>
+        </div>
       </div>
 
-      <div class="col-6">
-        <label for="accSku" class="app-form-label">SKU Code <span class="required-star">*</span></label>
-        <input id="accSku" type="text" class="app-input font-monospace" placeholder="MAG-CAR-15W" [(ngModel)]="newAccessory.sku" />
+      <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="accessoryModalOpen = false">Cancel</button>
+        <button type="submit" class="btn btn-sm btn-primary px-3">
+          <i class="bi bi-check2 me-1"></i> {{ isEditingAccessory ? 'Save Changes' : 'Create Accessory' }}
+        </button>
       </div>
+    </form>
+  </div>
 
-      <div class="col-6">
-        <label for="accCat" class="app-form-label">Category</label>
-        <select id="accCat" class="app-input" [(ngModel)]="newAccessory.category">
-          <option value="Chargers & Adapters">Chargers &amp; Adapters</option>
-          <option value="Cases & Protection">Cases &amp; Protection</option>
-          <option value="Screen Protectors">Screen Protectors</option>
-          <option value="Audio & Wearables">Audio &amp; Wearables</option>
-          <option value="Power Banks">Power Banks</option>
+  <!-- ========================================== -->
+  <!-- MODAL: CREATE MULTI-PRODUCT PURCHASE PO    -->
+  <!-- ========================================== -->
+  <div *ngIf="createPoModalOpen" class="modal-backdrop-custom" (click)="createPoModalOpen = false"></div>
+  <div *ngIf="createPoModalOpen" class="modal-dialog-custom modal-lg-custom p-4">
+    <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3">
+      <div>
+        <h5 class="fw-bold mb-0">Record Purchase Inward Order</h5>
+        <small class="text-muted">Intake multiple phones (with IMEIs) &amp; accessories into inventory</small>
+      </div>
+      <button type="button" class="btn-close" (click)="createPoModalOpen = false"></button>
+    </div>
+
+    <!-- PO Header Fields -->
+    <div class="row g-2 mb-3 p-3 bg-light rounded border">
+      <div class="col-12 col-sm-4">
+        <label class="form-label small fw-semibold">Supplier *</label>
+        <select class="form-select form-select-sm" [(ngModel)]="poForm.supplierId" name="poSupplier" required>
+          <option value="" disabled>Select Supplier</option>
+          <option *ngFor="let s of suppliers" [value]="s.id">{{ s.name }}</option>
         </select>
       </div>
 
-      <div class="col-6">
-        <label for="accCost" class="app-form-label">Cost Basis ($)</label>
-        <input id="accCost" type="number" class="app-input font-monospace" [(ngModel)]="newAccessory.purchasePrice" />
+      <div class="col-12 col-sm-4">
+        <label class="form-label small fw-semibold">Invoice / Reference # *</label>
+        <input type="text" class="form-control form-control-sm font-monospace" [(ngModel)]="poForm.referenceNo" name="poRef" required />
       </div>
 
-      <div class="col-6">
-        <label for="accRetail" class="app-form-label">Retail Selling Price ($)</label>
-        <input id="accRetail" type="number" class="app-input font-monospace fw-bold text-primary" [(ngModel)]="newAccessory.sellingPrice" />
+      <div class="col-12 col-sm-4">
+        <label class="form-label small fw-semibold">Purchase Date *</label>
+        <input type="date" class="form-control form-control-sm" [(ngModel)]="poForm.purchaseDate" name="poDate" required />
+      </div>
+    </div>
+
+    <!-- Add Line Item Panel -->
+    <div class="card border border-primary-subtle shadow-sm mb-3">
+      <div class="card-header bg-primary-subtle py-2 d-flex justify-content-between align-items-center">
+        <span class="small fw-bold text-primary">Add Line Item to Purchase</span>
+        <div class="btn-group btn-group-sm">
+          <button
+            type="button"
+            class="btn"
+            [ngClass]="newPoItemType === 'PHONE' ? 'btn-primary' : 'btn-outline-primary'"
+            (click)="newPoItemType = 'PHONE'; onPoItemTypeChange()"
+          >
+            <i class="bi bi-phone me-1"></i> Phone
+          </button>
+          <button
+            type="button"
+            class="btn"
+            [ngClass]="newPoItemType === 'ACCESSORY' ? 'btn-primary' : 'btn-outline-primary'"
+            (click)="newPoItemType = 'ACCESSORY'; onPoItemTypeChange()"
+          >
+            <i class="bi bi-headphones me-1"></i> Accessory
+          </button>
+        </div>
       </div>
 
-      <div class="col-6">
-        <label for="accQty" class="app-form-label">Initial Quantity</label>
-        <input id="accQty" type="number" class="app-input font-monospace" [(ngModel)]="newAccessory.quantity" />
+      <div class="card-body p-3">
+        <!-- If Adding Phone -->
+        <div *ngIf="newPoItemType === 'PHONE'" class="row g-2">
+          <div class="col-12 col-sm-3">
+            <input type="text" class="form-control form-control-sm" placeholder="Brand (e.g. Apple)" [(ngModel)]="tempPoItem.brand" />
+          </div>
+          <div class="col-12 col-sm-3">
+            <input type="text" class="form-control form-control-sm" placeholder="Model (e.g. iPhone 15 Pro)" [(ngModel)]="tempPoItem.model" />
+          </div>
+          <div class="col-12 col-sm-3">
+            <input type="text" class="form-control form-control-sm font-monospace" placeholder="IMEI 1 *" [(ngModel)]="tempPoItem.imei1" />
+          </div>
+          <div class="col-12 col-sm-3">
+            <input type="text" class="form-control form-control-sm font-monospace" placeholder="Optional IMEI 2" [(ngModel)]="tempPoItem.imei2" />
+          </div>
+          <div class="col-12 col-sm-3">
+            <input type="text" class="form-control form-control-sm" placeholder="RAM / Storage" [(ngModel)]="tempPoItem.storage" />
+          </div>
+          <div class="col-12 col-sm-3">
+            <select class="form-select form-select-sm" [(ngModel)]="tempPoItem.condition">
+              <option value="NEW">Brand New</option>
+              <option value="USED">Pre-Owned / Used</option>
+            </select>
+          </div>
+          <div class="col-6 col-sm-3">
+            <input type="number" step="0.01" class="form-control form-control-sm" placeholder="Unit Cost ($)" [(ngModel)]="tempPoItem.unitCost" />
+          </div>
+          <div class="col-6 col-sm-3">
+            <input type="number" step="0.01" class="form-control form-control-sm" placeholder="Selling Price ($)" [(ngModel)]="tempPoItem.sellingPrice" />
+          </div>
+        </div>
+
+        <!-- If Adding Accessory -->
+        <div *ngIf="newPoItemType === 'ACCESSORY'" class="row g-2">
+          <div class="col-12 col-sm-5">
+            <select class="form-select form-select-sm" [(ngModel)]="tempPoItem.accessoryId" (change)="onAccessorySelectInPo()">
+              <option value="">-- Choose Existing Accessory in Catalog --</option>
+              <option *ngFor="let acc of accessories" [value]="acc.id">{{ acc.name }} ({{ acc.sku }})</option>
+            </select>
+          </div>
+          <div class="col-12 col-sm-3" *ngIf="!tempPoItem.accessoryId">
+            <input type="text" class="form-control form-control-sm" placeholder="Accessory Name" [(ngModel)]="tempPoItem.name" />
+          </div>
+          <div class="col-6 col-sm-2">
+            <input type="number" min="1" class="form-control form-control-sm" placeholder="Quantity" [(ngModel)]="tempPoItem.quantity" />
+          </div>
+          <div class="col-6 col-sm-2">
+            <input type="number" step="0.01" class="form-control form-control-sm" placeholder="Unit Cost ($)" [(ngModel)]="tempPoItem.unitCost" />
+          </div>
+        </div>
+
+        <div class="text-end mt-2">
+          <button type="button" class="btn btn-sm btn-outline-primary" (click)="addItemToPo()">
+            <i class="bi bi-plus-lg me-1"></i> Add Line
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PO Line Items Table -->
+    <div class="table-responsive border rounded mb-3" style="max-block-size: 200px; overflow-y: auto;">
+      <table class="table table-sm table-clean align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Item Description</th>
+            <th>IMEI / SKU</th>
+            <th class="text-center">Qty</th>
+            <th>Unit Cost</th>
+            <th>Total</th>
+            <th class="text-end">Remove</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let line of poForm.items; let i = index">
+            <td><span class="badge bg-light text-dark border">{{ line.itemType }}</span></td>
+            <td class="fw-medium">{{ line.name }}</td>
+            <td>
+              <span *ngIf="line.imei1" class="imei-badge">{{ line.imei1 }}</span>
+              <span *ngIf="line.sku" class="sku-badge">{{ line.sku }}</span>
+            </td>
+            <td class="text-center">{{ line.quantity }}</td>
+            <td>${{ line.unitCost | number: '1.2-2' }}</td>
+            <td class="fw-bold">${{ (line.quantity * line.unitCost) | number: '1.2-2' }}</td>
+            <td class="text-end">
+              <button type="button" class="btn btn-sm btn-link text-danger p-0" (click)="removePoItem(i)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="poForm.items.length === 0">
+            <td colspan="7" class="text-center py-3 text-muted small">
+              No items added to this PO yet. Add at least one item above.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PO Summary Totals -->
+    <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded border mb-3">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="autoConfirmCheck" [(ngModel)]="poForm.autoConfirm" />
+        <label class="form-check-label small" for="autoConfirmCheck">
+          Auto-confirm immediately and intake into available stock
+        </label>
       </div>
 
-      <div class="col-6">
-        <label for="accMin" class="app-form-label">Min Threshold (Alert Level)</label>
-        <input id="accMin" type="number" class="app-input font-monospace" [(ngModel)]="newAccessory.minThreshold" />
+      <div class="text-end">
+        <div class="small text-muted">Total Calculated Amount:</div>
+        <div class="h4 fw-bold text-dark mb-0">${{ calculatePoTotal() | number: '1.2-2' }}</div>
       </div>
     </div>
 
     <div class="d-flex justify-content-end gap-2 pt-2 border-top">
-      <button type="button" class="btn-app btn-app-secondary" (click)="showAddAccessoryModal = false">Cancel</button>
-      <button type="button" class="btn-app btn-app-primary" (click)="saveAccessory()" [disabled]="!newAccessory.name || !newAccessory.sku">
-        Save Accessory
+      <button type="button" class="btn btn-sm btn-outline-secondary" (click)="createPoModalOpen = false">Cancel</button>
+      <button type="button" class="btn btn-sm btn-dark px-3" (click)="submitPurchaseOrder()">
+        <i class="bi bi-box-arrow-in-down me-1"></i> Save Purchase Order
       </button>
     </div>
   </div>
-</div>
 
-<!-- REUSABLE CONFIRM DELETE DIALOG -->
-<app-confirm-dialog
-  [isOpen]="showDeleteConfirm"
-  title="Confirm Removal"
-  [message]="'Are you sure you want to delete ' + (deleteTarget?.name || 'this item') + ' from store inventory? This action is tracked in audit logs.'"
-  confirmText="Delete Permanently"
-  [isDestructive]="true"
-  (confirm)="executeDelete()"
-  (cancel)="cancelDelete()"
-></app-confirm-dialog>
+  <!-- ========================================== -->
+  <!-- MODAL: MANUAL STOCK ADJUSTMENT             -->
+  <!-- ========================================== -->
+  <div *ngIf="adjustmentModalOpen" class="modal-backdrop-custom" (click)="adjustmentModalOpen = false"></div>
+  <div *ngIf="adjustmentModalOpen" class="modal-dialog-custom p-4">
+    <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3">
+      <h5 class="fw-bold mb-0">Manual Stock Adjustment</h5>
+      <button type="button" class="btn-close" (click)="adjustmentModalOpen = false"></button>
+    </div>
+
+    <form (ngSubmit)="submitAdjustment()">
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">Item Category *</label>
+        <div class="btn-group btn-group-sm w-100">
+          <button
+            type="button"
+            class="btn"
+            [ngClass]="adjustmentForm.itemType === 'ACCESSORY' ? 'btn-primary' : 'btn-outline-primary'"
+            (click)="adjustmentForm.itemType = 'ACCESSORY'"
+          >
+            Accessory Stock (Units)
+          </button>
+          <button
+            type="button"
+            class="btn"
+            [ngClass]="adjustmentForm.itemType === 'PHONE' ? 'btn-primary' : 'btn-outline-primary'"
+            (click)="adjustmentForm.itemType = 'PHONE'"
+          >
+            Phone Device (Status)
+          </button>
+        </div>
+      </div>
+
+      <!-- If Accessory -->
+      <div *ngIf="adjustmentForm.itemType === 'ACCESSORY'" class="mb-3">
+        <label class="form-label small fw-semibold">Select Accessory *</label>
+        <select class="form-select form-select-sm" [(ngModel)]="adjustmentForm.productId" name="adjAccId" required>
+          <option *ngFor="let a of accessories" [value]="a.id">{{ a.name }} (Current: {{ a.available_quantity }} units)</option>
+        </select>
+      </div>
+
+      <div *ngIf="adjustmentForm.itemType === 'ACCESSORY'" class="mb-3">
+        <label class="form-label small fw-semibold">New Accurate Stock Quantity *</label>
+        <input
+          type="number"
+          appNumberOnly
+          [allowDecimal]="false"
+          min="0"
+          class="form-control form-control-sm"
+          [class.is-invalid]="adjustmentErrors['newQuantity']"
+          [(ngModel)]="adjustmentForm.newQuantity"
+          (ngModelChange)="adjustmentErrors['newQuantity'] = ''"
+          name="adjQty"
+        />
+        <div *ngIf="adjustmentErrors['newQuantity']" class="invalid-feedback d-block small">
+          {{ adjustmentErrors['newQuantity'] }}
+        </div>
+        <small class="text-muted" style="font-size: 0.75rem;">
+          Increases create an adjustment batch; decreases consume oldest FIFO batches.
+        </small>
+      </div>
+
+      <!-- If Phone -->
+      <div *ngIf="adjustmentForm.itemType === 'PHONE'" class="mb-3">
+        <label class="form-label small fw-semibold">Select Phone *</label>
+        <select class="form-select form-select-sm" [(ngModel)]="adjustmentForm.productId" name="adjPhoneId" required>
+          <option *ngFor="let p of phones" [value]="p.id">{{ p.brand }} {{ p.model }} — IMEI: {{ p.imei1 }} ({{ p.status }})</option>
+        </select>
+      </div>
+
+      <div *ngIf="adjustmentForm.itemType === 'PHONE'" class="mb-3">
+        <label class="form-label small fw-semibold">New Status *</label>
+        <select class="form-select form-select-sm" [(ngModel)]="adjustmentForm.newStatus" name="adjStatus" required>
+          <option value="IN_STOCK">In Stock (Available)</option>
+          <option value="RESERVED">Reserved</option>
+          <option value="UNDER_REPAIR">Under Repair / RMA</option>
+          <option value="RETURNED">Returned</option>
+          <option value="SOLD">Sold</option>
+        </select>
+      </div>
+
+      <!-- Mandatory Reason -->
+      <div class="mb-3">
+        <label class="form-label small fw-semibold text-danger">Mandatory Audit Reason *</label>
+        <textarea
+          class="form-control form-control-sm"
+          rows="3"
+          [class.is-invalid]="adjustmentErrors['reason']"
+          [(ngModel)]="adjustmentForm.reason"
+          (ngModelChange)="adjustmentErrors['reason'] = ''"
+          name="adjReason"
+          placeholder="State the clear operational reason for this adjustment (e.g. damaged during unboxing, physical count audit discrepancy, warranty replacement)..."
+        ></textarea>
+        <div *ngIf="adjustmentErrors['reason']" class="invalid-feedback d-block small">
+          {{ adjustmentErrors['reason'] }}
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="adjustmentModalOpen = false">Cancel</button>
+        <button type="submit" class="btn btn-sm btn-danger px-3">
+          <i class="bi bi-check2 me-1"></i> Confirm Adjustment
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ADD / EDIT SUPPLIER                 -->
+  <!-- ========================================== -->
+  <div *ngIf="supplierModalOpen" class="modal-backdrop-custom" (click)="supplierModalOpen = false"></div>
+  <div *ngIf="supplierModalOpen" class="modal-dialog-custom p-4">
+    <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3">
+      <h5 class="fw-bold mb-0">{{ isEditingSupplier ? 'Edit Supplier Profile' : 'Register New Supplier' }}</h5>
+      <button type="button" class="btn-close" (click)="supplierModalOpen = false"></button>
+    </div>
+
+    <form (ngSubmit)="saveSupplier()">
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Supplier Company Name *</label>
+          <input type="text" class="form-control form-control-sm" [(ngModel)]="supplierForm.name" name="supName" required placeholder="e.g. Apex Global Distributors Ltd." [class.is-invalid]="supplierErrors['name']" (ngModelChange)="supplierErrors['name'] = ''" />
+          <div *ngIf="supplierErrors['name']" class="invalid-feedback d-block small">{{ supplierErrors['name'] }}</div>
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Contact Person</label>
+          <input type="text" class="form-control form-control-sm" [(ngModel)]="supplierForm.contactPerson" name="supContact" placeholder="e.g. David Miller" />
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Phone Number *</label>
+          <input type="text" class="form-control form-control-sm font-monospace" [(ngModel)]="supplierForm.phone" name="supPhone" required placeholder="0300-1234567" appPhoneMask [class.is-invalid]="supplierErrors['phone']" (ngModelChange)="supplierErrors['phone'] = ''" />
+          <div *ngIf="supplierErrors['phone']" class="invalid-feedback d-block small">{{ supplierErrors['phone'] }}</div>
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Email Address</label>
+          <input type="email" class="form-control form-control-sm" [(ngModel)]="supplierForm.email" name="supEmail" placeholder="orders@supplier.com" [class.is-invalid]="supplierErrors['email']" (ngModelChange)="supplierErrors['email'] = ''" />
+          <div *ngIf="supplierErrors['email']" class="invalid-feedback d-block small">{{ supplierErrors['email'] }}</div>
+        </div>
+
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Tax ID / Business Reg</label>
+          <input type="text" class="form-control form-control-sm" [(ngModel)]="supplierForm.businessId" name="supBizId" placeholder="e.g. TAX-884920" />
+        </div>
+
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Warehouse / Delivery Address</label>
+          <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="supplierForm.address" name="supAddress"></textarea>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="supplierModalOpen = false">Cancel</button>
+        <button type="submit" class="btn btn-sm btn-primary px-3">
+          <i class="bi bi-check2 me-1"></i> Save Supplier
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: START NEW STOCK-TAKE AUDIT          -->
+  <!-- ========================================== -->
+  <div *ngIf="stockTakeModalOpen" class="modal-backdrop-custom" (click)="stockTakeModalOpen = false"></div>
+  <div *ngIf="stockTakeModalOpen" class="modal-dialog-custom p-4">
+    <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3">
+      <h5 class="fw-bold mb-0">Initiate Physical Stock-Taking Audit</h5>
+      <button type="button" class="btn-close" (click)="stockTakeModalOpen = false"></button>
+    </div>
+
+    <form (ngSubmit)="startStockTake()">
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">Audit Session Title *</label>
+        <input type="text" class="form-control form-control-sm" [(ngModel)]="stockTakeForm.title" name="stTitle" required />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">Inventory Scope *</label>
+        <select class="form-select form-select-sm" [(ngModel)]="stockTakeForm.scope" name="stScope">
+          <option value="ALL">Full Shop Audit (Phones &amp; Accessories)</option>
+          <option value="PHONES_ONLY">Mobile Phones Only</option>
+          <option value="ACCESSORIES_ONLY">Accessories Catalog Only</option>
+        </select>
+        <small class="text-muted" style="font-size: 0.75rem;">
+          A snapshot of all currently active inventory items will be created for count verification.
+        </small>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">Notes / Instructions</label>
+        <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="stockTakeForm.notes" name="stNotes" placeholder="e.g. End of month physical inventory count for front showroom &amp; storage bins"></textarea>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="stockTakeModalOpen = false">Cancel</button>
+        <button type="submit" class="btn btn-sm btn-primary px-3">
+          <i class="bi bi-play-circle me-1"></i> Launch Audit Session
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: STOCK-TAKE COUNTING WORKSHEET       -->
+  <!-- ========================================== -->
+  <div *ngIf="stockTakeCountModalOpen && activeStockTake" class="modal-backdrop-custom" (click)="stockTakeCountModalOpen = false"></div>
+  <div *ngIf="stockTakeCountModalOpen && activeStockTake" class="modal-dialog-custom modal-lg-custom p-4">
+    <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3">
+      <div>
+        <div class="d-flex align-items-center gap-2">
+          <h5 class="fw-bold mb-0">Count Worksheet: {{ activeStockTake.title }}</h5>
+          <span class="badge bg-light text-dark border font-monospace">{{ activeStockTake.session_code }}</span>
+          <span class="badge" [ngClass]="activeStockTake.status === 'IN_PROGRESS' ? 'bg-warning text-dark' : 'bg-success'">
+            {{ activeStockTake.status }}
+          </span>
+        </div>
+        <small class="text-muted">Enter physical quantities. Discrepancies update live.</small>
+      </div>
+      <button type="button" class="btn-close" (click)="stockTakeCountModalOpen = false"></button>
+    </div>
+
+    <!-- Live Audit Progress Strip -->
+    <div class="p-3 rounded-3 bg-light border mb-3">
+      <div class="d-flex justify-content-between align-items-center small mb-1">
+        <span class="fw-semibold">Verification Progress: {{ stockTakeVerifiedCount }} / {{ activeStockTake.items.length }} items ({{ stockTakeProgressPct }}%)</span>
+        <span class="badge" [ngClass]="stockTakeDiscrepancyCount > 0 ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'">
+          {{ stockTakeDiscrepancyCount }} Discrepanc{{ stockTakeDiscrepancyCount === 1 ? 'y' : 'ies' }}
+        </span>
+      </div>
+      <div class="progress" style="block-size: 6px;">
+        <div class="progress-bar bg-primary" [style.width.%]="stockTakeProgressPct"></div>
+      </div>
+    </div>
+
+    <!-- Worksheet Table -->
+    <div class="table-responsive border rounded mb-3" style="max-block-size: 420px; overflow-y: auto;">
+      <table class="table table-clean table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Product Name</th>
+            <th>Identifier (IMEI / SKU)</th>
+            <th class="text-center">Expected</th>
+            <th class="text-center" style="inline-size: 110px;">Counted</th>
+            <th class="text-center">Discrepancy</th>
+            <th>Discrepancy Reason</th>
+            <th class="text-center">Verified</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of activeStockTake.items">
+            <td><span class="badge bg-light text-dark border">{{ item.item_type }}</span></td>
+            <td class="fw-semibold">{{ item.product_name }}</td>
+            <td><span class="imei-badge">{{ item.identifier || '&mdash;' }}</span></td>
+            <td class="text-center text-muted fw-bold">{{ item.expected_quantity }}</td>
+            <td class="text-center">
+              <input
+                type="number"
+                min="0"
+                class="form-control form-control-sm text-center fw-bold"
+                [(ngModel)]="item.counted_quantity"
+                [disabled]="activeStockTake.status !== 'IN_PROGRESS'"
+                (ngModelChange)="onStockCountChanged(item)"
+              />
+            </td>
+            <td class="text-center">
+              <span
+                class="badge px-2 py-1"
+                [ngClass]="item.discrepancy === 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger text-white'"
+              >
+                {{ item.discrepancy > 0 ? '+' : '' }}{{ item.discrepancy }}
+              </span>
+            </td>
+            <td>
+              <input
+                type="text"
+                class="form-control form-control-sm"
+                placeholder="Discrepancy note..."
+                [(ngModel)]="item.discrepancy_reason"
+                [disabled]="activeStockTake.status !== 'IN_PROGRESS'"
+              />
+            </td>
+            <td class="text-center">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                [(ngModel)]="item.verified"
+                [disabled]="activeStockTake.status !== 'IN_PROGRESS'"
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Actions footer -->
+    <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+      <div>
+        <button
+          *ngIf="activeStockTake.status === 'IN_PROGRESS'"
+          type="button"
+          class="btn btn-sm btn-outline-secondary"
+          (click)="saveStockTakeCounts()"
+        >
+          <i class="bi bi-save me-1"></i> Save Progress
+        </button>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="stockTakeCountModalOpen = false">Close</button>
+        <button
+          *ngIf="auth.isAdmin() && activeStockTake.status === 'IN_PROGRESS'"
+          type="button"
+          class="btn btn-sm btn-danger px-3"
+          (click)="finalizeStockTake()"
+        >
+          <i class="bi bi-check-circle me-1"></i> Finalize &amp; Reconcile Inventory
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- SLIDE-OVER DRAWER: DEVICE DETAILS (PHONE)  -->
+  <!-- ========================================== -->
+  <div *ngIf="phoneDrawerOpen" class="drawer-backdrop" (click)="closePhoneDrawer()"></div>
+  <div *ngIf="phoneDrawerOpen && selectedPhone" class="detail-drawer p-4">
+    <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3">
+      <div>
+        <h5 class="fw-bold mb-0">{{ selectedPhone.brand }} {{ selectedPhone.model }}</h5>
+        <span class="badge mt-1" [ngClass]="selectedPhone.condition === 'NEW' ? 'bg-success' : 'bg-warning text-dark'">
+          {{ selectedPhone.condition }} Condition
+        </span>
+      </div>
+      <button type="button" class="btn-close" (click)="closePhoneDrawer()"></button>
+    </div>
+
+    <!-- Serialized IMEI Details -->
+    <div class="card border bg-light mb-3">
+      <div class="card-body p-3">
+        <div class="small fw-bold text-uppercase text-muted mb-2">IMEI Identification</div>
+        <div class="mb-2">
+          <small class="text-muted d-block">Primary IMEI 1:</small>
+          <span class="imei-badge fs-6">{{ selectedPhone.imei1 }}</span>
+        </div>
+        <div *ngIf="selectedPhone.imei2">
+          <small class="text-muted d-block">Secondary IMEI 2:</small>
+          <span class="imei-badge fs-6">{{ selectedPhone.imei2 }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Specs Grid -->
+    <div class="row g-2 mb-3">
+      <div class="col-6">
+        <div class="p-2 border rounded bg-white">
+          <small class="text-muted d-block">RAM / Storage</small>
+          <span class="fw-semibold">{{ selectedPhone.ram || '8GB' }} / {{ selectedPhone.storage || '256GB' }}</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="p-2 border rounded bg-white">
+          <small class="text-muted d-block">Color</small>
+          <span class="fw-semibold">{{ selectedPhone.color || 'Standard' }}</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="p-2 border rounded bg-white">
+          <small class="text-muted d-block">Battery Health</small>
+          <span class="fw-semibold">{{ selectedPhone.battery_health ? selectedPhone.battery_health + '%' : '100%' }}</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="p-2 border rounded bg-white">
+          <small class="text-muted d-block">Status</small>
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ selectedPhone.status }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cost & Price (Cost strictly masked for Shopkeepers) -->
+    <div class="d-flex justify-content-between p-3 border rounded bg-light mb-3">
+      <div *ngIf="auth.isAdmin()">
+        <small class="text-muted d-block">Purchase Cost</small>
+        <span class="fw-bold fs-5 font-monospace">${{ selectedPhone.purchase_cost | number: '1.2-2' }}</span>
+      </div>
+      <div [class.text-end]="auth.isAdmin()">
+        <small class="text-muted d-block">Retail Selling Price</small>
+        <span class="fw-bold fs-5 text-primary font-monospace">${{ selectedPhone.selling_price | number: '1.2-2' }}</span>
+      </div>
+      <div class="d-flex align-items-center">
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-primary"
+          [disabled]="printingLabelId === selectedPhone.id"
+          (click)="printBarcodeLabel('PHONE', selectedPhone.id, selectedPhone.imei1)"
+        >
+          <i class="bi bi-printer me-1"></i> Label PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- Defect & Condition Notes -->
+    <div *ngIf="selectedPhone.physical_condition" class="mb-3 p-3 bg-light rounded border">
+      <small class="fw-bold text-muted d-block mb-1">Physical Condition / Defects:</small>
+      <div class="small">{{ selectedPhone.physical_condition }}</div>
+    </div>
+
+    <!-- Movement Audit Trail -->
+    <h6 class="fw-bold mt-2 mb-2">Device Movement History</h6>
+    <div class="border rounded" style="max-block-size: 240px; overflow-y: auto;">
+      <div *ngFor="let m of phoneMovements" class="p-2 border-bottom small">
+        <div class="d-flex justify-content-between">
+          <span class="fw-semibold">{{ m.movement_type }}</span>
+          <span class="text-muted" style="font-size: 0.7rem;">{{ m.created_at | date: 'short' }}</span>
+        </div>
+        <div class="text-muted">{{ m.reason || 'Inventory transition' }} &bull; By {{ m.performed_by_name }}</div>
+      </div>
+      <div *ngIf="phoneMovements.length === 0" class="p-3 text-center text-muted small">
+        No additional movements recorded for this device.
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- SLIDE-OVER DRAWER: ACCESSORY FIFO BATCHES  -->
+  <!-- ========================================== -->
+  <div *ngIf="accDrawerOpen" class="drawer-backdrop" (click)="closeAccDrawer()"></div>
+  <div *ngIf="accDrawerOpen && selectedAccessory" class="detail-drawer p-4">
+    <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3">
+      <div>
+        <h5 class="fw-bold mb-0">{{ selectedAccessory.name }}</h5>
+        <span class="sku-badge mt-1">{{ selectedAccessory.sku }}</span>
+      </div>
+      <button type="button" class="btn-close" (click)="closeAccDrawer()"></button>
+    </div>
+
+    <!-- Overview info -->
+    <div class="row g-2 mb-3">
+      <div class="col-6">
+        <div class="p-2 border rounded bg-light">
+          <small class="text-muted d-block">Available Stock</small>
+          <span class="fw-bold fs-5 text-dark">{{ selectedAccessory.available_quantity }} units</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="p-2 border rounded bg-light">
+          <small class="text-muted d-block">Min Threshold</small>
+          <span class="fw-bold fs-5 text-muted">{{ selectedAccessory.min_stock_threshold }} units</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FIFO Valuation Breakdown (Admin Only Cost Columns) -->
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <h6 class="fw-bold mb-0">FIFO Purchase Batches</h6>
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-primary py-0 px-2"
+        [disabled]="printingLabelId === selectedAccessory.id"
+        (click)="printBarcodeLabel('ACCESSORY', selectedAccessory.id, selectedAccessory.sku)"
+      >
+        <i class="bi bi-printer me-1"></i> Barcode PDF
+      </button>
+    </div>
+    <p class="text-muted small mb-2">Every purchase lot retains its chronological batch count for accurate FIFO inventory tracking.</p>
+
+    <div class="table-responsive border rounded mb-3">
+      <table class="table table-clean table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Batch #</th>
+            <th *ngIf="auth.isAdmin()">Unit Cost</th>
+            <th class="text-center">Remaining</th>
+            <th *ngIf="auth.isAdmin()">Valuation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let b of selectedAccessory.batches">
+            <td class="text-muted small">{{ b.purchase_date }}</td>
+            <td class="font-monospace small">{{ b.batch_no || 'PO-BATCH' }}</td>
+            <td *ngIf="auth.isAdmin()" class="font-monospace">${{ b.unit_cost | number: '1.2-2' }}</td>
+            <td class="text-center fw-bold font-monospace">{{ b.remaining_quantity }} / {{ b.initial_quantity }}</td>
+            <td *ngIf="auth.isAdmin()" class="fw-semibold text-primary font-monospace">${{ (b.remaining_quantity * b.unit_cost) | number: '1.2-2' }}</td>
+          </tr>
+          <tr *ngIf="!selectedAccessory.batches || selectedAccessory.batches.length === 0">
+            <td [attr.colspan]="auth.isAdmin() ? 5 : 3" class="text-center py-3 text-muted small">No active FIFO batches remaining.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: PURCHASE ORDER DETAIL INSPECTOR     -->
+  <!-- ========================================== -->
+  <div *ngIf="purchaseModalOpen && selectedPurchase" class="modal-backdrop-custom" (click)="purchaseModalOpen = false"></div>
+  <div *ngIf="purchaseModalOpen && selectedPurchase" class="modal-dialog-custom modal-lg-custom p-4">
+    <div class="d-flex justify-content-between align-items-start pb-3 border-bottom mb-3">
+      <div>
+        <div class="d-flex align-items-center gap-2">
+          <h5 class="fw-bold font-monospace mb-0">{{ selectedPurchase.reference_no }}</h5>
+          <span
+            class="badge rounded-pill"
+            [ngClass]="selectedPurchase.status === 'CONFIRMED' ? 'bg-success' : (selectedPurchase.status === 'DRAFT' ? 'bg-warning text-dark' : 'bg-danger')"
+          >
+            {{ selectedPurchase.status }}
+          </span>
+        </div>
+        <small class="text-muted">
+          Supplier: <strong>{{ selectedPurchase.supplier_name || 'Direct Vendor' }}</strong>
+          &middot; Date: {{ selectedPurchase.purchase_date }}
+          <span *ngIf="selectedPurchase.created_by_name">&middot; Logged by {{ selectedPurchase.created_by_name }}</span>
+        </small>
+      </div>
+      <button type="button" class="btn-close" (click)="purchaseModalOpen = false"></button>
+    </div>
+
+    <div class="table-responsive border rounded mb-3" style="max-block-size: 320px; overflow-y: auto;">
+      <table class="table table-clean table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Product</th>
+            <th>Identifier</th>
+            <th class="text-center">Qty</th>
+            <th class="text-end">Unit Cost</th>
+            <th class="text-end">Line Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of selectedPurchase.items">
+            <td><span class="badge bg-light text-secondary border">{{ item.item_type }}</span></td>
+            <td class="fw-semibold">{{ item.product_name }}</td>
+            <td>
+              <span *ngIf="item.identifier || item.imei1 || item.sku" class="imei-badge">{{ item.identifier || item.imei1 || item.sku }}</span>
+              <span *ngIf="!item.identifier && !item.imei1 && !item.sku" class="text-muted small">&mdash;</span>
+            </td>
+            <td class="text-center font-monospace">{{ item.quantity }}</td>
+            <td class="text-end font-monospace">${{ getPoLineUnitCost(item) | number: '1.2-2' }}</td>
+            <td class="text-end font-monospace fw-bold">${{ getPoLineTotal(item) | number: '1.2-2' }}</td>
+          </tr>
+          <tr *ngIf="!selectedPurchase.items || selectedPurchase.items.length === 0">
+            <td colspan="6" class="text-center py-4 text-muted small">No line items recorded on this purchase order.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="p-3 rounded-3 bg-light border d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+      <div class="small text-muted">
+        <div *ngIf="selectedPurchase.notes"><strong>Notes:</strong> {{ selectedPurchase.notes }}</div>
+        <div *ngIf="selectedPurchase.confirmed_by_name">Confirmed by {{ selectedPurchase.confirmed_by_name }}</div>
+      </div>
+      <div class="text-end font-monospace">
+        <div class="small text-muted">Subtotal: ${{ selectedPurchase.subtotal | number:'1.2-2' }} &middot; Tax: ${{ selectedPurchase.tax_amount | number:'1.2-2' }}</div>
+        <div class="h4 fw-bold text-primary mb-0">${{ selectedPurchase.total_amount | number:'1.2-2' }}</div>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2">
+      <button type="button" class="btn btn-sm btn-outline-secondary" (click)="purchaseModalOpen = false">Close</button>
+      <button
+        *ngIf="auth.isAdmin() && selectedPurchase.status === 'DRAFT'"
+        type="button"
+        class="btn btn-sm btn-success px-3"
+        (click)="confirmPurchase(selectedPurchase.id, selectedPurchase.reference_no)"
+      >
+        <i class="bi bi-check-lg me-1"></i> Confirm &amp; Intake Into Stock
+      </button>
+    </div>
+  </div>
+
+  <!-- ENTERPRISE CONFIRM DIALOG -->
+  <app-confirm-dialog
+    id="inventory-confirm"
+    [isOpen]="confirmDialogOpen"
+    [title]="confirmDialogTitle"
+    [message]="confirmDialogMessage"
+    [confirmText]="confirmDialogConfirmText"
+    [isDestructive]="confirmDialogDestructive"
+    (confirm)="handleConfirmAccepted()"
+    (cancel)="handleConfirmCancelled()"
+  ></app-confirm-dialog>
+</div>

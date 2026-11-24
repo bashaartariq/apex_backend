@@ -1,22 +1,35 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 
 @Component({
   selector: 'app-confirm-dialog',
   template: `
     <div *ngIf="isOpen" class="modal-backdrop-custom" (click)="onCancel()" aria-hidden="true"></div>
-    <div *ngIf="isOpen" class="modal-dialog-custom" role="dialog" aria-modal="true" [attr.aria-labelledby]="'modal-title-' + id">
-      <div class="modal-content shadow-lg border rounded p-4 bg-white">
-        <div class="d-flex align-items-center gap-3 mb-3">
-          <div class="icon-circle flex-shrink-0" [ngClass]="isDestructive ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary'">
-            <i class="bi" [ngClass]="isDestructive ? 'bi-exclamation-triangle-fill' : 'bi-question-circle-fill'" fs-4></i>
+    <div
+      *ngIf="isOpen"
+      class="modal-dialog-custom"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="'modal-title-' + id"
+    >
+      <div class="confirm-card shadow-lg">
+        <div class="d-flex align-items-start gap-3 p-4">
+          <div
+            class="icon-circle flex-shrink-0"
+            [ngClass]="isDestructive ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary'"
+          >
+            <i
+              class="bi fs-5"
+              [ngClass]="isDestructive ? 'bi-exclamation-triangle-fill' : 'bi-shield-check'"
+              aria-hidden="true"
+            ></i>
           </div>
-          <div>
-            <h2 [id]="'modal-title-' + id" class="h6 fw-bold mb-1 text-dark">{{ title }}</h2>
-            <div class="text-secondary small">{{ message }}</div>
+          <div class="flex-grow-1">
+            <h2 [id]="'modal-title-' + id" class="h6 fw-bold mb-1">{{ title }}</h2>
+            <div class="text-secondary small lh-base">{{ message }}</div>
           </div>
         </div>
 
-        <div class="d-flex align-items-center justify-content-end gap-2 mt-3 pt-3 border-top">
+        <div class="confirm-footer d-flex align-items-center justify-content-end gap-2 px-4 py-3">
           <button type="button" class="btn-app btn-app-secondary btn-app-sm" (click)="onCancel()">
             {{ cancelText }}
           </button>
@@ -37,23 +50,36 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
       .modal-backdrop-custom {
         position: fixed;
         inset: 0;
-        background-color: rgba(15, 23, 42, 0.45);
-        backdrop-filter: blur(2px);
+        background-color: rgba(9, 13, 22, 0.56);
+        backdrop-filter: blur(4px);
         z-index: 1080;
+        animation: fadeIn 0.16s ease-out;
       }
       .modal-dialog-custom {
         position: fixed;
         inset-block-start: 50%;
         inset-inline-start: 50%;
         transform: translate(-50%, -50%);
-        inline-size: 420px;
+        inline-size: 440px;
         max-inline-size: 92vw;
         z-index: 1085;
+      }
+      .confirm-card {
+        background-color: var(--ms-bg-surface);
+        color: var(--ms-text-primary);
+        border: 1px solid var(--ms-border-strong);
+        border-radius: var(--ms-radius-xl);
+        overflow: hidden;
+        animation: msModalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .confirm-footer {
+        background-color: var(--ms-bg-subtle);
+        border-top: 1px solid var(--ms-border-subtle);
       }
       .icon-circle {
         inline-size: 2.75rem;
         block-size: 2.75rem;
-        border-radius: 50%;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -72,6 +98,13 @@ export class ConfirmDialogComponent {
 
   @Output() confirm = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
+
+  @HostListener('window:keydown.escape')
+  handleEscape(): void {
+    if (this.isOpen) {
+      this.onCancel();
+    }
+  }
 
   onConfirm(): void {
     this.confirm.emit();

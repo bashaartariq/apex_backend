@@ -1,0 +1,65 @@
+.reports-page {
+  max-inline-size: 1620px;
+}
+
+.nav-pills .nav-link {
+  color: var(--ms-text-secondary);
+  border-radius: var(--ms-radius-sm);
+  padding: 0.55rem 0.875rem;
+  transition: all 0.15s ease-in-out;
+
+  .tab-title {
+    font-size: 0.8125rem;
+    color: var(--ms-text-primary);
+    line-height: 1.2;
+  }
+
+  .tab-desc {
+    font-size: 0.6875rem;
+    color: var(--ms-text-muted);
+    line-height: 1.2;
+    margin-top: 0.125rem;
+  }
+
+  &:hover {
+    background-color: var(--ms-bg-hover);
+    color: var(--ms-brand-primary);
+
+    .tab-title {
+      color: var(--ms-brand-primary);
+    }
+  }
+
+  &.active {
+    background: var(--ms-brand-gradient);
+    color: #ffffff;
+    box-shadow: var(--ms-shadow-brand);
+
+    .tab-title {
+      color: #ffffff;
+    }
+
+    .tab-desc {
+      color: rgba(255, 255, 255, 0.82);
+    }
+  }
+}
+
+.report-bar-track {
+  block-size: 7px;
+  border-radius: 99px;
+  background-color: var(--ms-bg-muted);
+  overflow: hidden;
+}
+
+.report-bar-rev {
+  block-size: 100%;
+  border-radius: 99px;
+  background: var(--ms-brand-gradient);
+}
+
+.report-bar-prof {
+  block-size: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #10b981, #059669);
+}

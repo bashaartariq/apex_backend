@@ -4,6 +4,8 @@ import { takeUntil } from 'rxjs/operators';
 import { SystemStatusService } from './core/services/system-status.service';
 import { TenantContextService } from './core/services/tenant-context.service';
 import { AuthService } from './core/services/auth.service';
+import { ThemeService } from './core/services/theme.service';
+import { NotificationsService } from './core/services/notifications.service';
 
 @Component({
   selector: 'app-root',
@@ -21,8 +23,10 @@ export class AppComponent implements OnInit, OnDestroy {
 
   constructor(
     public readonly auth: AuthService,
+    public readonly theme: ThemeService,
     private readonly statusService: SystemStatusService,
-    private readonly tenantService: TenantContextService
+    private readonly tenantService: TenantContextService,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   ngOnInit(): void {
@@ -48,6 +52,16 @@ export class AppComponent implements OnInit, OnDestroy {
         this.activeShopId = shopId;
       });
 
+    this.auth.currentUser$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((user) => {
+        if (user) {
+          this.notificationsService.refresh();
+        } else {
+          this.notificationsService.clear();
+        }
+      });
+
     // Check connectivity on startup
     this.statusService.checkConnectivity().subscribe();
   }
@@ -68,5 +82,9 @@ export class AppComponent implements OnInit, OnDestroy {
   toggleCollapse(): void {
     this.sidebarCollapsed = !this.sidebarCollapsed;
     localStorage.setItem('apex_sidebar_collapsed', String(this.sidebarCollapsed));
+  }
+
+  recheckApi(): void {
+    this.statusService.checkConnectivity().subscribe();
   }
 }

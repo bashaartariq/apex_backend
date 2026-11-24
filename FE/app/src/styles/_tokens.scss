@@ -1,111 +1,213 @@
 /* ==========================================================================
-   DESIGN TOKENS — APEXCELLULAR SAAS DESIGN SYSTEM
+   DESIGN TOKENS — APEXCELLULAR ENTERPRISE RETAIL OS
+   Signature Direction: Precision Cobalt-Indigo & Obsidian Titanium Slate
    ========================================================================== */
 
-:root {
+:root,
+[data-ms-theme='light'],
+body.theme-light {
   /* Typography */
+  --ms-font-display: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
   --ms-font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --ms-font-mono: 'JetBrains Mono', 'SF Mono', Consolas, Menlo, monospace;
 
-  --ms-text-xs: 0.75rem;    /* 12px */
-  --ms-text-sm: 0.8125rem;  /* 13px */
-  --ms-text-base: 0.875rem; /* 14px */
-  --ms-text-md: 0.9375rem;  /* 15px */
-  --ms-text-lg: 1rem;       /* 16px */
-  --ms-text-xl: 1.125rem;   /* 18px */
-  --ms-text-2xl: 1.25rem;   /* 20px */
-  --ms-text-3xl: 1.5rem;    /* 24px */
-  --ms-text-4xl: 1.875rem;  /* 30px */
+  --ms-text-xs: 0.75rem;      /* 12px */
+  --ms-text-sm: 0.8125rem;    /* 13px */
+  --ms-text-base: 0.875rem;   /* 14px */
+  --ms-text-md: 0.9375rem;    /* 15px */
+  --ms-text-lg: 1rem;         /* 16px */
+  --ms-text-xl: 1.125rem;     /* 18px */
+  --ms-text-2xl: 1.375rem;    /* 22px */
+  --ms-text-3xl: 1.625rem;    /* 26px */
+  --ms-text-4xl: 2rem;        /* 32px */
 
-  /* Neutral Backgrounds */
-  --ms-bg-app: #f8fafc;
+  /* Surface Hierarchy (Light) */
+  --ms-bg-app: #f3f5f9;
   --ms-bg-surface: #ffffff;
-  --ms-bg-subtle: #f1f5f9;
-  --ms-bg-hover: #f8fafc;
+  --ms-bg-elevated: #ffffff;
+  --ms-bg-subtle: #f8fafc;
+  --ms-bg-muted: #eef2f7;
+  --ms-bg-hover: #f1f5f9;
   --ms-bg-active: #e2e8f0;
+  --ms-bg-glass: rgba(255, 255, 255, 0.86);
 
-  /* Sidebar Dark Theme Tokens */
-  --ms-sidebar-bg: #0b0f19;
+  /* Obsidian Command Sidebar (Always anchored dark for signature visual contrast) */
+  --ms-sidebar-bg: #0a0f1c;
   --ms-sidebar-surface: #111827;
-  --ms-sidebar-border: #1f2937;
+  --ms-sidebar-border: rgba(148, 163, 184, 0.14);
   --ms-sidebar-text: #94a3b8;
   --ms-sidebar-text-muted: #64748b;
   --ms-sidebar-text-hover: #f8fafc;
-  --ms-sidebar-item-hover: rgba(255, 255, 255, 0.05);
-  --ms-sidebar-item-active: #2563eb;
-  --ms-sidebar-active-bg: rgba(37, 99, 235, 0.12);
+  --ms-sidebar-item-hover: rgba(255, 255, 255, 0.06);
+  --ms-sidebar-item-active: #6366f1;
+  --ms-sidebar-active-bg: linear-gradient(90deg, rgba(79, 70, 229, 0.24) 0%, rgba(37, 99, 235, 0.06) 100%);
 
-  /* Text Colors */
+  /* Text Hierarchy (Light) */
   --ms-text-primary: #0f172a;
   --ms-text-secondary: #475569;
   --ms-text-muted: #64748b;
   --ms-text-disabled: #94a3b8;
   --ms-text-inverse: #ffffff;
 
-  /* Borders & Dividers */
-  --ms-border-subtle: #e2e8f0;
-  --ms-border-strong: #cbd5e1;
-  --ms-border-focus: #2563eb;
+  /* Hairline Borders */
+  --ms-border-subtle: rgba(15, 23, 42, 0.085);
+  --ms-border-strong: rgba(15, 23, 42, 0.16);
+  --ms-border-focus: #4f46e5;
 
-  /* Primary Brand (SaaS Blue) */
-  --ms-brand-primary: #2563eb;
-  --ms-brand-hover: #1d4ed8;
-  --ms-brand-active: #1e40af;
-  --ms-brand-subtle: #eff6ff;
-  --ms-brand-border: #bfdbfe;
-  --ms-brand-text: #1d4ed8;
+  /* Signature Brand Accent (Precision Cobalt-Indigo) */
+  --ms-brand-primary: #4f46e5;
+  --ms-brand-secondary: #2563eb;
+  --ms-brand-gradient: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
+  --ms-brand-hover: #4338ca;
+  --ms-brand-active: #3730a3;
+  --ms-brand-subtle: #eef2ff;
+  --ms-brand-border: #c7d2fe;
+  --ms-brand-text: #4338ca;
 
-  /* Semantic State Tokens */
-  /* Success / Positive */
-  --ms-success: #10b981;
+  /* Semantic Palette */
+  --ms-success: #059669;
   --ms-success-subtle: #ecfdf5;
   --ms-success-border: #a7f3d0;
   --ms-success-text: #065f46;
 
-  /* Warning / Caution */
-  --ms-warning: #f59e0b;
+  --ms-warning: #d97706;
   --ms-warning-subtle: #fffbeb;
   --ms-warning-border: #fde68a;
   --ms-warning-text: #92400e;
 
-  /* Danger / Destructive */
-  --ms-danger: #ef4444;
+  --ms-danger: #dc2626;
   --ms-danger-subtle: #fef2f2;
   --ms-danger-border: #fecaca;
   --ms-danger-text: #991b1b;
 
-  /* Info */
   --ms-info: #0284c7;
   --ms-info-subtle: #f0f9ff;
   --ms-info-border: #bae6fd;
   --ms-info-text: #075985;
 
-  /* Purple / Tech / IMEI */
   --ms-purple: #7c3aed;
   --ms-purple-subtle: #f5f3ff;
   --ms-purple-border: #ddd6fe;
   --ms-purple-text: #5b21b6;
 
-  /* Layout Dimensions */
-  --ms-sidebar-width: 256px;
-  --ms-sidebar-collapsed-width: 68px;
-  --ms-header-height: 60px;
+  /* Hardware Telemetry Chips */
+  --ms-chip-imei-bg: #f1f5f9;
+  --ms-chip-imei-text: #1e293b;
+  --ms-chip-imei-border: #cbd5e1;
 
-  /* Border Radii */
-  --ms-radius-xs: 4px;
-  --ms-radius-sm: 6px;
-  --ms-radius-md: 8px;
-  --ms-radius-lg: 10px;
-  --ms-radius-xl: 12px;
+  /* Layout Dimensions */
+  --ms-sidebar-width: 264px;
+  --ms-sidebar-collapsed-width: 72px;
+  --ms-header-height: 64px;
+
+  /* Radii */
+  --ms-radius-xs: 5px;
+  --ms-radius-sm: 8px;
+  --ms-radius-md: 10px;
+  --ms-radius-lg: 14px;
+  --ms-radius-xl: 18px;
   --ms-radius-full: 9999px;
 
-  /* Elevation Shadows */
-  --ms-shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
-  --ms-shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
-  --ms-shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
-  --ms-shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
-  --ms-shadow-drawer: -4px 0 24px rgba(15, 23, 42, 0.12);
+  /* Elevation & Depth */
+  --ms-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --ms-shadow-sm: 0 2px 6px -1px rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --ms-shadow-md: 0 8px 20px -4px rgba(15, 23, 42, 0.08), 0 3px 6px -3px rgba(15, 23, 42, 0.04);
+  --ms-shadow-lg: 0 18px 36px -8px rgba(15, 23, 42, 0.14), 0 8px 16px -6px rgba(15, 23, 42, 0.06);
+  --ms-shadow-drawer: -12px 0 36px rgba(15, 23, 42, 0.16);
+  --ms-shadow-brand: 0 4px 14px rgba(79, 70, 229, 0.28);
 
-  /* Focus Indicator Ring */
-  --ms-focus-ring: #2563eb;
+  /* Motion & Focus */
+  --ms-ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ms-focus-ring: #4f46e5;
+  --ms-focus-glow: 0 0 0 3px rgba(79, 70, 229, 0.18);
+
+  /* Sync Bootstrap Primary */
+  --bs-primary: #4f46e5;
+  --bs-primary-rgb: 79, 70, 229;
+  --bs-link-color: #4f46e5;
+  --bs-link-hover-color: #4338ca;
+}
+
+/* ==========================================================================
+   OBSIDIAN ENTERPRISE DARK THEME
+   ========================================================================== */
+[data-ms-theme='dark'],
+body.theme-dark {
+  --ms-bg-app: #0b1120;
+  --ms-bg-surface: #111827;
+  --ms-bg-elevated: #162033;
+  --ms-bg-subtle: #182235;
+  --ms-bg-muted: #1e293b;
+  --ms-bg-hover: #1e2a40;
+  --ms-bg-active: #27354f;
+  --ms-bg-glass: rgba(17, 24, 39, 0.88);
+
+  --ms-sidebar-bg: #070b14;
+  --ms-sidebar-surface: #0f172a;
+  --ms-sidebar-border: rgba(148, 163, 184, 0.12);
+
+  --ms-text-primary: #f1f5f9;
+  --ms-text-secondary: #cbd5e1;
+  --ms-text-muted: #94a3b8;
+  --ms-text-disabled: #64748b;
+
+  --ms-border-subtle: rgba(148, 163, 184, 0.14);
+  --ms-border-strong: rgba(148, 163, 184, 0.25);
+  --ms-border-focus: #818cf8;
+
+  --ms-brand-primary: #6366f1;
+  --ms-brand-secondary: #3b82f6;
+  --ms-brand-gradient: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+  --ms-brand-hover: #818cf8;
+  --ms-brand-active: #4f46e5;
+  --ms-brand-subtle: rgba(99, 102, 241, 0.16);
+  --ms-brand-border: rgba(129, 140, 248, 0.35);
+  --ms-brand-text: #a5b4fc;
+
+  --ms-success: #10b981;
+  --ms-success-subtle: rgba(16, 185, 129, 0.14);
+  --ms-success-border: rgba(16, 185, 129, 0.32);
+  --ms-success-text: #6ee7b7;
+
+  --ms-warning: #f59e0b;
+  --ms-warning-subtle: rgba(245, 158, 11, 0.14);
+  --ms-warning-border: rgba(245, 158, 11, 0.32);
+  --ms-warning-text: #fcd34d;
+
+  --ms-danger: #f87171;
+  --ms-danger-subtle: rgba(239, 68, 68, 0.14);
+  --ms-danger-border: rgba(248, 113, 113, 0.32);
+  --ms-danger-text: #fca5a5;
+
+  --ms-info: #38bdf8;
+  --ms-info-subtle: rgba(56, 189, 248, 0.14);
+  --ms-info-border: rgba(56, 189, 248, 0.32);
+  --ms-info-text: #7dd3fc;
+
+  --ms-purple: #a78bfa;
+  --ms-purple-subtle: rgba(139, 92, 246, 0.16);
+  --ms-purple-border: rgba(167, 139, 250, 0.32);
+  --ms-purple-text: #c4b5fd;
+
+  --ms-chip-imei-bg: rgba(30, 41, 59, 0.9);
+  --ms-chip-imei-text: #e2e8f0;
+  --ms-chip-imei-border: rgba(148, 163, 184, 0.24);
+
+  --ms-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --ms-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --ms-shadow-md: 0 10px 24px rgba(0, 0, 0, 0.45);
+  --ms-shadow-lg: 0 20px 44px rgba(0, 0, 0, 0.6);
+  --ms-shadow-drawer: -14px 0 40px rgba(0, 0, 0, 0.6);
+  --ms-shadow-brand: 0 4px 16px rgba(99, 102, 241, 0.35);
+
+  --ms-focus-ring: #818cf8;
+  --ms-focus-glow: 0 0 0 3px rgba(129, 140, 248, 0.25);
+
+  --bs-primary: #6366f1;
+  --bs-primary-rgb: 99, 102, 241;
+  --bs-body-bg: #0b1120;
+  --bs-body-color: #f1f5f9;
+  --bs-border-color: rgba(148, 163, 184, 0.16);
+  --bs-link-color: #818cf8;
+  --bs-link-hover-color: #a5b4fc;
 }

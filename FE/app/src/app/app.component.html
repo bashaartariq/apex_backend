@@ -2,10 +2,10 @@
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
 <!-- Authenticated Application Shell -->
-<div *ngIf="auth.isAuthenticated; else unauthenticatedView" class="app-shell d-flex flex-column min-vh-100">
+<div *ngIf="auth.isAuthenticated; else unauthenticatedView" class="app-shell d-flex flex-column vh-100 overflow-hidden">
   <!-- Top Application Header -->
   <app-header
-    appTitle="ApexCellular POS"
+    appTitle="ApexCellular OS"
     [sidebarOpen]="sidebarOpen"
     [sidebarCollapsed]="sidebarCollapsed"
     [apiConnected]="apiConnected"
@@ -13,6 +13,7 @@
     [activeShopId]="activeShopId"
     (toggleSidebar)="toggleSidebar()"
     (toggleCollapse)="toggleCollapse()"
+    (recheckConnectivity)="recheckApi()"
   ></app-header>
 
   <!-- Shell Layout: Sidebar + Main Content -->

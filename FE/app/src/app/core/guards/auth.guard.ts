@@ -19,6 +19,10 @@ export class AuthGuard implements CanActivate {
 
   canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean | UrlTree {
     if (this.auth.isAuthenticated) {
+      if (this.auth.isTokenExpired()) {
+        this.auth.handleSessionExpired(state.url);
+        return false;
+      }
       return true;
     }
 

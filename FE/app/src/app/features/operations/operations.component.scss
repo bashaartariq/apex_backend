@@ -1,0 +1,21 @@
+:host {
+  display: block;
+}
+
+.pipeline-dots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+
+  .pipe-seg {
+    inline-size: 16px;
+    block-size: 4px;
+    border-radius: 99px;
+    background-color: var(--ms-bg-muted);
+    transition: background-color 0.2s ease;
+
+    &.done {
+      background: var(--ms-brand-gradient);
+    }
+  }
+}

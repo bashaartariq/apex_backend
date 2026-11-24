@@ -1,266 +1,425 @@
 <div class="pos-workspace d-flex flex-column h-100">
-  <!-- POS Top Bar -->
-  <div class="pos-topbar px-3 py-2 bg-white border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
-    <div class="d-flex align-items-center gap-2">
-      <span class="badge bg-primary px-2 py-1">
-        <i class="bi bi-display me-1"></i> Register #01
+  <!-- POS Command Topbar -->
+  <div class="pos-topbar px-3 py-2 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="register-badge">
+        <i class="bi bi-display"></i> Register #01
       </span>
-      <span class="fw-bold text-dark small">POS Express Checkout</span>
-      <span class="text-muted small">&middot; Cashier: Alex Mercer</span>
+      <span class="fw-bold small">POS Express Terminal</span>
+      <span class="text-muted small d-none sm-inline">&middot; {{ cashierName }}</span>
+      <span class="badge bg-secondary-subtle text-secondary border font-monospace" style="font-size: 0.68rem;">
+        {{ taxEnabled ? (taxName + ': ' + taxRate + '%') : 'Tax Exempt (0%)' }}
+      </span>
     </div>
 
-    <div class="d-flex align-items-center gap-2">
-      <span class="badge bg-success-subtle text-success border border-success-subtle small">
-        <i class="bi bi-upc-scan me-1"></i> Scanner Active
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <!-- Keyboard Shortcuts Legend -->
+      <div class="shortcut-strip d-none d-xl-flex align-items-center gap-2 text-muted small me-2">
+        <span><kbd>F2</kbd> Scan</span>
+        <span><kbd>F9</kbd> Tender</span>
+        <span><kbd>Alt+H</kbd> Hold</span>
+      </div>
+
+      <!-- Parked Sales Queue Button -->
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 position-relative"
+        (click)="showParkedModal = true"
+        title="View held / parked customer carts"
+      >
+        <i class="bi bi-pause-circle"></i>
+        <span>Held</span>
+        <span *ngIf="parkedSales.length > 0" class="badge bg-primary rounded-pill">{{ parkedSales.length }}</span>
+      </button>
+
+      <!-- Approvals Queue Button (Discounts & Credit Overrides) -->
+      <button
+        type="button"
+        class="btn btn-sm d-inline-flex align-items-center gap-1"
+        [ngClass]="pendingApprovalsCount > 0 ? 'btn-warning text-dark fw-semibold' : 'btn-outline-secondary'"
+        (click)="openApprovalsHub()"
+        title="Review or apply discount & credit limit approvals"
+      >
+        <i class="bi bi-shield-check"></i>
+        <span>Approvals</span>
+        <span *ngIf="pendingApprovalsCount > 0" class="badge bg-dark text-white rounded-pill">{{ pendingApprovalsCount }}</span>
+        <span *ngIf="pendingApprovalsCount === 0 && approvedReadyCount > 0" class="badge bg-success rounded-pill">{{ approvedReadyCount }}</span>
+      </button>
+
+      <span class="badge bg-success-subtle text-success border small d-none d-md-inline-flex align-items-center gap-1">
+        <i class="bi bi-upc-scan"></i> Scanner Ready
       </span>
-      <span class="text-secondary small font-monospace">{{ cart.length }} Item(s) in Register</span>
     </div>
   </div>
 
-  <!-- Main POS Split Workspace -->
+  <!-- Main Split POS Workspace -->
   <div class="pos-body flex-grow-1 d-flex flex-column flex-lg-row overflow-hidden">
-    <!-- LEFT PANEL: CART & CHECKOUT (approx 440px on desktop) -->
-    <section class="pos-cart-panel bg-white border-end d-flex flex-column" aria-label="Customer Cart & Tender">
-      <!-- Customer Bar -->
-      <div class="p-3 border-bottom bg-light">
+    <!-- LEFT PANEL: CUSTOMER, CART & TENDER -->
+    <section class="pos-cart-panel border-end d-flex flex-column" aria-label="Customer Cart and Tender">
+      <!-- Customer Assignment Combobox -->
+      <div class="customer-bar p-3 border-bottom position-relative">
         <div class="d-flex align-items-center justify-content-between mb-2">
-          <label for="customerSelect" class="small fw-bold text-secondary text-uppercase mb-0" style="font-size: 0.7rem; letter-spacing: 0.05em;">
-            Customer Assignment
-          </label>
-          <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 small" (click)="showNewCustomerModal = true" style="font-size: 0.75rem;">
-            <i class="bi bi-person-plus me-1"></i>+ New
+          <span class="small fw-bold text-muted text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.06em;">
+            Customer Profile
+          </span>
+          <div class="d-flex align-items-center gap-2">
+            <button
+              *ngIf="selectedCustomer"
+              type="button"
+              class="btn btn-sm btn-link text-muted p-0 small text-decoration-none"
+              (click)="selectCustomer(null)"
+            >
+              Clear
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.74rem;" (click)="showNewCustomerModal = true">
+              <i class="bi bi-person-plus me-1"></i>New
+            </button>
+          </div>
+        </div>
+
+        <!-- Searchable Customer Selector Trigger -->
+        <div class="input-group input-group-sm">
+          <span class="input-group-text"><i class="bi bi-person-search"></i></span>
+          <input
+            type="text"
+            class="form-control"
+            [placeholder]="selectedCustomer ? selectedCustomer.name + ' (' + (selectedCustomer.phone || 'No phone') + ')' : 'Search customer by name, phone, or CNIC...'"
+            [(ngModel)]="customerSearchQuery"
+            (focus)="showCustomerPicker = true; filterCustomers()"
+            (input)="showCustomerPicker = true; filterCustomers()"
+          />
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            (click)="showCustomerPicker = !showCustomerPicker; filterCustomers()"
+            aria-label="Toggle customer picker"
+          >
+            <i class="bi" [ngClass]="showCustomerPicker ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
           </button>
         </div>
 
-        <div class="input-group input-group-sm">
-          <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
-          <select
-            id="customerSelect"
-            class="form-select form-select-sm"
-            [ngModel]="selectedCustomer"
-            (ngModelChange)="selectCustomer($event)"
+        <!-- Customer Search Dropdown -->
+        <div *ngIf="showCustomerPicker" class="customer-picker-popover shadow-lg mt-1">
+          <button
+            type="button"
+            class="picker-option w-100 text-start"
+            [class.selected]="!selectedCustomer"
+            (click)="selectCustomer(null)"
           >
-            <option [ngValue]="null">Walk-in Customer (Standard Retail)</option>
-            <option *ngFor="let c of customers" [ngValue]="c">
-              {{ c.name }} &middot; {{ c.phone }} ({{ c.loyaltyTier }})
-            </option>
-          </select>
+            <div class="fw-semibold small">Walk-in Customer (Standard Retail)</div>
+            <div class="text-muted" style="font-size: 0.7rem;">Accessories only &middot; No credit balance</div>
+          </button>
+
+          <button
+            *ngFor="let c of filteredCustomers"
+            type="button"
+            class="picker-option w-100 text-start"
+            [class.selected]="selectedCustomer?.id === c.id"
+            (click)="selectCustomer(c)"
+          >
+            <div class="d-flex align-items-center justify-content-between gap-2">
+              <span class="fw-semibold small text-truncate">{{ c.name }}</span>
+              <span *ngIf="c.cnicMasked" class="badge bg-primary-subtle text-primary font-monospace" style="font-size: 0.64rem;">
+                CNIC Verified
+              </span>
+            </div>
+            <div class="d-flex justify-content-between text-muted font-monospace" style="font-size: 0.7rem;">
+              <span>{{ c.phone || 'No phone' }}</span>
+              <span>Avail Credit: ${{ c.availableCredit | number:'1.0-0' }}</span>
+            </div>
+          </button>
+
+          <div *ngIf="filteredCustomers.length === 0" class="p-3 text-center text-muted small">
+            No matching customers.
+            <button type="button" class="btn btn-link btn-sm p-0 ms-1" (click)="showCustomerPicker = false; showNewCustomerModal = true">
+              Register new &rarr;
+            </button>
+          </div>
         </div>
 
-        <!-- Attached Customer VIP Pill -->
-        <div *ngIf="selectedCustomer" class="mt-2 p-2 rounded bg-white border d-flex align-items-center justify-content-between small">
-          <div>
-            <strong class="text-dark">{{ selectedCustomer.name }}</strong>
-            <span class="badge bg-warning-subtle text-warning border ms-2">{{ selectedCustomer.loyaltyTier }}</span>
+        <!-- Attached Customer Card with Credit Utilization Bar -->
+        <div *ngIf="selectedCustomer" class="customer-summary-card mt-2 p-2 rounded-3 border small">
+          <div class="d-flex align-items-center justify-content-between gap-2">
+            <strong class="text-truncate">{{ selectedCustomer.name }}</strong>
+            <span *ngIf="selectedCustomer.cnicMasked" class="imei-chip py-0 px-2" style="font-size: 0.68rem;">
+              <i class="bi bi-shield-lock-fill text-primary"></i> {{ selectedCustomer.cnicMasked }}
+            </span>
           </div>
-          <span class="text-muted font-monospace">{{ selectedCustomer.totalVisits }} visits</span>
+          <div class="d-flex justify-content-between mt-1 text-muted font-monospace" style="font-size: 0.72rem;">
+            <span>Limit: ${{ selectedCustomer.creditLimit | number:'1.0-0' }}</span>
+            <span [class.text-danger]="selectedCustomer.outstandingBalance > 0">
+              Due: ${{ selectedCustomer.outstandingBalance | number:'1.2-2' }}
+            </span>
+            <span class="text-success fw-bold">Avail: ${{ selectedCustomer.availableCredit | number:'1.2-2' }}</span>
+          </div>
+          <div *ngIf="selectedCustomer.creditLimit > 0" class="progress mt-1" style="block-size: 4px;">
+            <div
+              class="progress-bar"
+              [ngClass]="getCustomerCreditPct(selectedCustomer) > 85 ? 'bg-danger' : 'bg-primary'"
+              [style.width.%]="getCustomerCreditPct(selectedCustomer)"
+            ></div>
+          </div>
+        </div>
+
+        <!-- Mandatory CNIC Guard Banner -->
+        <div *ngIf="customerCnicRequiredForCart && (!selectedCustomer || !selectedCustomer.cnicMasked)" class="mt-2 p-2 rounded-3 bg-danger-subtle border text-danger small d-flex align-items-center gap-2">
+          <i class="bi bi-shield-lock-fill fs-5 flex-shrink-0"></i>
+          <div>
+            <strong>CNIC Mandatory:</strong> Serialized phone checkout requires a customer with verified 13-digit CNIC.
+          </div>
+        </div>
+
+        <!-- Attached Approved Credit Override Pill -->
+        <div *ngIf="selectedCreditOverrideId" class="mt-2 p-2 rounded-3 bg-success-subtle border text-success small d-flex align-items-center justify-content-between">
+          <span><i class="bi bi-check-circle-fill me-1"></i> Credit override authorized</span>
+          <button type="button" class="btn btn-link btn-sm p-0 text-success" (click)="selectedCreditOverrideId = null">Remove</button>
         </div>
       </div>
 
-      <!-- Quick Action Toolbar -->
-      <div class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between gap-2 bg-white">
+      <!-- Quick Cart Toolbar -->
+      <div class="px-3 py-2 border-bottom d-flex align-items-center gap-2">
         <button
           type="button"
-          class="btn-app btn-app-subtle btn-app-sm flex-fill justify-content-center"
-          (click)="suspendSale()"
+          class="btn btn-sm btn-outline-secondary flex-fill"
+          (click)="parkCurrentCart()"
           [disabled]="cart.length === 0"
-          title="Hold current order"
+          title="Hold current cart to serve another customer (Alt+H)"
         >
-          <i class="bi bi-pause-circle text-warning"></i> Suspend
+          <i class="bi bi-pause-fill me-1"></i> Hold Cart
         </button>
         <button
           type="button"
-          class="btn-app btn-app-subtle btn-app-sm flex-fill justify-content-center"
-          (click)="applyDiscount(15.0)"
-          [disabled]="cart.length === 0"
-          title="Apply $15 Promotional Voucher"
-        >
-          <i class="bi bi-tag text-success"></i> -$15 Promo
-        </button>
-        <button
-          type="button"
-          class="btn-app btn-app-subtle btn-app-sm flex-fill justify-content-center text-danger"
+          class="btn btn-sm btn-outline-danger flex-fill"
           (click)="clearCart()"
           [disabled]="cart.length === 0"
-          title="Clear all items"
+          title="Clear all items from cart"
         >
-          <i class="bi bi-trash"></i> Reset
+          <i class="bi bi-trash3 me-1"></i> Clear
         </button>
       </div>
 
-      <!-- Cart Items Table List -->
+      <!-- Cart Items List -->
       <div class="cart-items-scroll flex-grow-1 overflow-y-auto">
         <div *ngIf="cart.length === 0" class="p-5 text-center text-muted">
-          <i class="bi bi-cart3 fs-1 d-block mb-2 text-secondary opacity-50"></i>
-          <div class="fw-semibold">Register is empty</div>
-          <small>Scan a barcode/IMEI or select items from the catalog on the right.</small>
+          <div class="empty-cart-icon mx-auto mb-3">
+            <i class="bi bi-upc-scan fs-3 text-primary"></i>
+          </div>
+          <div class="fw-bold mb-1">Register Ready</div>
+          <small class="d-block">Scan an IMEI / barcode or click any item on the right to begin checkout.</small>
         </div>
 
-        <table *ngIf="cart.length > 0" class="app-table cart-table mb-0">
-          <thead>
-            <tr>
-              <th scope="col" style="inline-size: 50%;">Item</th>
-              <th scope="col" class="text-center" style="inline-size: 20%;">Qty</th>
-              <th scope="col" class="col-numeric" style="inline-size: 20%;">Subtotal</th>
-              <th scope="col" class="text-end" style="inline-size: 10%;"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let item of cart; let idx = index">
-              <td>
-                <div class="fw-semibold text-dark small lh-sm">{{ item.title }}</div>
-                <div class="text-muted font-monospace" style="font-size: 0.6875rem;">
-                  {{ item.identifier }}
+        <div *ngIf="cart.length > 0" class="p-2 d-flex flex-column gap-2">
+          <div *ngFor="let item of cart; let idx = index" class="cart-item-card p-2 rounded-3 border">
+            <div class="d-flex align-items-start justify-content-between gap-2">
+              <div class="overflow-hidden">
+                <div class="fw-bold small text-truncate">{{ item.productName }}</div>
+                <div class="d-flex align-items-center flex-wrap gap-1 mt-1">
+                  <span *ngIf="item.itemType === 'PHONE'" class="imei-chip py-0 px-1" style="font-size: 0.66rem;">
+                    IMEI {{ item.identifier }}
+                  </span>
+                  <span *ngIf="item.itemType === 'ACCESSORY'" class="sku-chip py-0 px-1" style="font-size: 0.66rem;">
+                    SKU {{ item.identifier }}
+                  </span>
+                  <span *ngIf="item.discountRequestId" class="badge bg-success-subtle text-success border" style="font-size: 0.62rem;">
+                    Approved Disc
+                  </span>
                 </div>
-                <div class="text-secondary small font-monospace">
-                  ${{ item.unitPrice | number:'1.2-2' }}
-                </div>
-              </td>
-              <td class="text-center">
-                <div class="d-inline-flex align-items-center border rounded bg-light">
+              </div>
+              <button
+                type="button"
+                class="btn btn-sm btn-link text-danger p-0"
+                (click)="removeFromCart(idx)"
+                aria-label="Remove item"
+              >
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top">
+              <div class="d-flex align-items-center gap-2">
+                <span class="font-monospace fw-bold small">${{ item.actualPrice | number:'1.2-2' }}</span>
+                <span *ngIf="item.actualPrice < item.defaultPrice" class="text-decoration-line-through text-muted font-monospace" style="font-size: 0.72rem;">
+                  ${{ item.defaultPrice | number:'1.2-2' }}
+                </span>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary py-0 px-1"
+                  style="font-size: 0.7rem;"
+                  (click)="openPriceEdit(item)"
+                  title="Negotiate price or request discount"
+                >
+                  <i class="bi bi-tag"></i> Price
+                </button>
+              </div>
+
+              <div class="d-flex align-items-center gap-2">
+                <div class="qty-stepper d-inline-flex align-items-center border rounded">
                   <button
                     type="button"
-                    class="btn btn-sm btn-link text-dark p-0 px-2 text-decoration-none border-0"
+                    class="qty-btn"
                     (click)="updateQuantity(idx, -1)"
+                    [disabled]="item.itemType === 'PHONE'"
                     aria-label="Decrease quantity"
                   >
-                    -
+                    &minus;
                   </button>
                   <span class="px-2 small fw-bold font-monospace">{{ item.quantity }}</span>
                   <button
                     type="button"
-                    class="btn btn-sm btn-link text-dark p-0 px-2 text-decoration-none border-0"
+                    class="qty-btn"
                     (click)="updateQuantity(idx, 1)"
-                    [disabled]="item.type === 'phone'"
+                    [disabled]="item.itemType === 'PHONE'"
                     aria-label="Increase quantity"
                   >
                     +
                   </button>
                 </div>
-              </td>
-              <td class="col-numeric col-mono fw-bold text-dark">
-                ${{ item.subtotal | number:'1.2-2' }}
-              </td>
-              <td class="text-end">
-                <button
-                  type="button"
-                  class="btn btn-sm text-danger border-0 p-1"
-                  (click)="removeFromCart(idx)"
-                  aria-label="Remove item"
-                >
-                  <i class="bi bi-x-lg" style="font-size: 0.8rem;"></i>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                <span class="font-monospace fw-bold text-primary" style="min-inline-size: 72px; text-align: right;">
+                  ${{ item.subtotal | number:'1.2-2' }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Bottom Checkout Totals & Payment Action (matching uploaded POS reference) -->
-      <div class="cart-totals-panel p-3 border-top bg-light">
-        <div class="d-flex justify-content-between mb-1 small text-secondary">
-          <span>Subtotal:</span>
-          <span class="font-monospace fw-semibold text-dark">${{ subtotal | number:'1.2-2' }}</span>
+      <!-- Bottom Checkout Totals & Tender CTA -->
+      <div class="cart-totals-panel p-3 border-top">
+        <div class="d-flex justify-content-between mb-1 small text-muted">
+          <span>Subtotal ({{ cart.length }} line{{ cart.length === 1 ? '' : 's' }}):</span>
+          <span class="font-monospace fw-semibold">${{ subtotal | number:'1.2-2' }}</span>
         </div>
-        <div class="d-flex justify-content-between mb-1 small text-secondary" *ngIf="discountAmount > 0">
-          <span>Promo Discount:</span>
-          <span class="font-monospace text-danger">-${{ discountAmount | number:'1.2-2' }}</span>
+        <div class="d-flex justify-content-between mb-1 small text-muted" *ngIf="totalDiscount > 0">
+          <span>Discounts Applied:</span>
+          <span class="font-monospace text-danger fw-semibold">-${{ totalDiscount | number:'1.2-2' }}</span>
         </div>
-        <div class="d-flex justify-content-between mb-2 small text-secondary">
-          <span>Tax / VAT (5%):</span>
+        <div class="d-flex justify-content-between mb-2 small text-muted">
+          <span>{{ taxName }} ({{ taxRate }}%{{ isTaxInclusive ? ' incl.' : '' }}):</span>
           <span class="font-monospace">${{ taxAmount | number:'1.2-2' }}</span>
         </div>
 
-        <div class="d-flex align-items-center justify-content-between py-2 border-top border-dark-subtle mb-3">
+        <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-3">
           <div>
-            <span class="text-uppercase small text-muted fw-bold d-block lh-1" style="font-size: 0.75rem;">Total Payable</span>
-            <div class="h2 fw-bold text-dark font-monospace mb-0 lh-1">
+            <span class="text-uppercase text-muted fw-bold d-block lh-1" style="font-size: 0.68rem; letter-spacing: 0.06em;">Total Payable</span>
+            <div class="h2 fw-bold font-monospace mb-0 lh-sm text-primary">
               ${{ totalPayable | number:'1.2-2' }}
             </div>
           </div>
 
-          <!-- Big Prominent Payment Button -->
           <button
             type="button"
-            class="btn btn-primary btn-lg px-4 py-3 d-flex align-items-center gap-2 shadow-sm rounded-3"
-            style="min-inline-size: 160px; justify-content: center; background-color: #2563eb;"
+            class="btn btn-primary btn-lg px-4 py-3 d-flex align-items-center gap-2 rounded-3"
+            style="min-inline-size: 164px; justify-content: center;"
             (click)="openPayment()"
             [disabled]="cart.length === 0"
           >
-            <i class="bi bi-credit-card-2-front-fill fs-4" aria-hidden="true"></i>
-            <span class="fw-bold fs-5">TENDER</span>
+            <i class="bi bi-credit-card-2-front-fill fs-5" aria-hidden="true"></i>
+            <span class="fw-bold">TENDER</span>
           </button>
         </div>
       </div>
     </section>
 
-    <!-- RIGHT PANEL: BARCODE SEARCH & PRODUCT FAST-PICK GRID -->
-    <section class="pos-catalog-panel flex-grow-1 p-3 d-flex flex-column bg-light" aria-label="Product Search and Catalog">
-      <!-- Top Scanner Barcode Input -->
-      <div class="search-input-group mb-3">
-        <i class="bi bi-upc-scan search-icon fs-5 text-primary" aria-hidden="true"></i>
+    <!-- RIGHT PANEL: BARCODE SCANNER & FAST-PICK HARDWARE GRID -->
+    <section class="pos-catalog-panel flex-grow-1 p-3 d-flex flex-column" aria-label="Product Search and Catalog">
+      <!-- Scanner Command Bar -->
+      <div class="scanner-bar input-group mb-3 shadow-xs">
+        <span class="input-group-text border-end-0 text-primary">
+          <i class="bi bi-upc-scan fs-5"></i>
+        </span>
         <input
+          #scannerInputEl
           type="search"
-          class="app-input form-control-lg fs-6 py-2 shadow-xs"
-          placeholder="Type product name, model, scan barcode or IMEI..."
+          class="form-control form-control-lg border-start-0 border-end-0 fs-6"
+          placeholder="Scan IMEI / barcode or search model, brand, SKU... (F2)"
           [formControl]="barcodeInput"
+          (keyup.enter)="onScanEnter()"
         />
-        <span class="search-shortcut">Auto-Scan</span>
-      </div>
-
-      <!-- Category Filter Pills -->
-      <div class="category-pills-bar d-flex gap-2 overflow-x-auto pb-2 mb-3">
-        <button
-          *ngFor="let cat of categories"
-          type="button"
-          class="btn btn-sm rounded-pill px-3 py-1 text-nowrap"
-          [ngClass]="selectedCategory === cat ? 'btn-dark' : 'btn-outline-secondary bg-white text-dark border'"
-          (click)="setCategory(cat)"
-        >
-          {{ cat }}
+        <button class="btn btn-primary px-3" type="button" (click)="onScanEnter()">
+          <i class="bi bi-plus-lg me-1"></i> Quick Add
         </button>
       </div>
 
-      <!-- Product Cards Grid -->
+      <!-- Category Filter Pills with Live Counts -->
+      <div class="category-pills-bar d-flex align-items-center justify-content-between flex-wrap gap-2 pb-2 mb-3">
+        <div class="d-flex gap-2 overflow-x-auto">
+          <button
+            *ngFor="let cat of categories"
+            type="button"
+            class="cat-pill-btn"
+            [class.active]="selectedCategory === cat"
+            (click)="setCategory(cat)"
+          >
+            <span>{{ cat }}</span>
+            <span class="cat-pill-count font-monospace">{{ getCategoryCount(cat) }}</span>
+          </button>
+        </div>
+        <span class="text-muted small font-monospace">{{ filteredCatalog.length }} available</span>
+      </div>
+
+      <!-- Hardware & Accessory Fast-Pick Grid -->
       <div class="catalog-grid-wrapper flex-grow-1 overflow-y-auto pe-1">
-        <div class="row g-2 g-xl-3">
+        <div *ngIf="isLoadingCatalog" class="row g-3">
+          <div *ngFor="let s of [1,2,3,4,5,6,7,8]" class="col-6 col-sm-4 col-xl-3">
+            <div class="app-card p-3">
+              <div class="skeleton-block mb-2" style="block-size: 16px; inline-size: 60%;"></div>
+              <div class="skeleton-block mb-2" style="block-size: 20px; inline-size: 90%;"></div>
+              <div class="skeleton-block" style="block-size: 24px; inline-size: 45%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="!isLoadingCatalog && filteredCatalog.length === 0" class="text-center py-5 text-muted">
+          <i class="bi bi-box-seam fs-1 opacity-50 d-block mb-2"></i>
+          <div class="fw-semibold">No matching items in stock</div>
+          <small>Try clearing the filter or scanning another barcode / IMEI.</small>
+        </div>
+
+        <div *ngIf="!isLoadingCatalog && filteredCatalog.length > 0" class="row g-2 g-xl-3">
           <div *ngFor="let item of filteredCatalog" class="col-6 col-sm-4 col-md-3 col-xl-3">
             <button
               type="button"
-              class="pos-product-card card p-3 h-100 border text-start w-100 bg-white"
+              class="pos-product-card text-start w-100 h-100"
+              [class.is-phone]="item.itemType === 'PHONE'"
+              [class.in-cart]="isInCart(item)"
               (click)="addToCart(item)"
-              [class.border-primary]="item.type === 'phone'"
             >
-              <div class="d-flex align-items-start justify-content-between mb-2">
+              <div class="d-flex align-items-center justify-content-between gap-1 mb-2 w-100">
                 <span
-                  class="badge small"
-                  [ngClass]="item.type === 'phone' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-light text-secondary border'"
+                  class="badge"
+                  [ngClass]="item.itemType === 'PHONE' ? 'bg-primary-subtle text-primary border' : 'bg-info-subtle text-info border'"
+                  style="font-size: 0.64rem;"
                 >
-                  {{ item.brand }}
+                  <i class="bi me-1" [ngClass]="item.itemType === 'PHONE' ? 'bi-phone' : 'bi-headphones'"></i>
+                  {{ item.itemType === 'PHONE' ? (item.condition || 'PHONE') : 'ACC' }}
                 </span>
                 <span
-                  class="stock-indicator-pill font-monospace"
-                  [ngClass]="item.stock <= 5 ? 'bg-danger text-white' : (item.stock <= 10 ? 'bg-warning text-dark' : 'bg-success text-white')"
+                  class="badge font-monospace"
+                  [ngClass]="item.stockQuantity <= 2 ? 'bg-danger-subtle text-danger' : (item.stockQuantity <= 5 ? 'bg-warning-subtle text-warning' : 'bg-success-subtle text-success')"
+                  style="font-size: 0.66rem;"
                 >
-                  {{ item.stock }} in stock
+                  {{ item.stockQuantity }} left
                 </span>
               </div>
 
-              <div class="product-title fw-bold text-dark mb-1 lh-sm">
-                {{ item.name }}
+              <div class="product-title fw-bold mb-1 lh-sm text-truncate w-100" [title]="item.productName">
+                {{ item.productName }}
               </div>
 
-              <div class="product-subtext text-muted font-monospace small mb-3 text-truncate" style="font-size: 0.75rem;">
-                <span *ngIf="item.type === 'phone'">IMEI: {{ item.identifier }}</span>
-                <span *ngIf="item.type !== 'phone'">SKU: {{ item.identifier }}</span>
+              <div class="text-muted text-truncate w-100 mb-1" style="font-size: 0.7rem;" *ngIf="item.specs">
+                {{ item.specs }}
               </div>
 
-              <div class="mt-auto d-flex align-items-center justify-content-between pt-2 border-top">
-                <span class="h6 fw-bold text-dark mb-0 font-monospace">
-                  ${{ item.price | number:'1.2-2' }}
+              <div class="font-monospace text-muted text-truncate w-100 mb-2" style="font-size: 0.7rem;">
+                {{ item.itemType === 'PHONE' ? 'IMEI: ' + item.identifier : 'SKU: ' + item.identifier }}
+              </div>
+
+              <div class="mt-auto pt-2 border-top d-flex align-items-center justify-content-between w-100">
+                <span class="fs-6 fw-bold font-monospace">
+                  ${{ item.defaultPrice | number:'1.2-2' }}
                 </span>
-                <span class="btn-add-mini rounded-circle d-flex align-items-center justify-content-center text-primary bg-primary-subtle">
-                  <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                <span class="add-pill" [class.added]="isInCart(item)">
+                  <i class="bi" [ngClass]="isInCart(item) ? 'bi-check-lg' : 'bi-plus-lg'"></i>
                 </span>
               </div>
             </button>
@@ -271,214 +430,504 @@
   </div>
 </div>
 
-<!-- PAYMENT TENDER MODAL -->
-<div *ngIf="showPaymentModal" class="drawer-backdrop" (click)="showPaymentModal = false" aria-hidden="true"></div>
-<div *ngIf="showPaymentModal" class="modal-dialog-custom modal-payment shadow-lg" role="dialog" aria-modal="true" aria-label="Tender Payment">
-  <div class="modal-content bg-white p-4 rounded-3 border">
-    <div class="d-flex align-items-center justify-content-between pb-3 border-bottom mb-3">
-      <div>
-        <h2 class="h5 fw-bold mb-0 text-dark">Tender Payment</h2>
-        <small class="text-muted">Total Payable: <strong class="font-monospace text-primary">${{ totalPayable | number:'1.2-2' }}</strong></small>
+<!-- ========================================================================= -->
+<!-- MODAL 1: SPLIT TENDER & QUICK CASH CHECKOUT                               -->
+<!-- ========================================================================= -->
+<div *ngIf="showPaymentModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(9, 13, 22, 0.56); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-light">
+        <div>
+          <h5 class="modal-title fw-bold mb-0"><i class="bi bi-credit-card-2-front me-2 text-primary"></i>Tender &amp; Split Payment</h5>
+          <small class="text-muted">Combine multiple payment tenders or assign remaining balance to customer credit</small>
+        </div>
+        <button type="button" class="btn-close" (click)="showPaymentModal = false"></button>
       </div>
-      <button type="button" class="btn-close" (click)="showPaymentModal = false" aria-label="Close"></button>
-    </div>
 
-    <!-- Payment Mode Tabs -->
-    <div class="row g-2 mb-3">
-      <div class="col-4">
+      <div class="modal-body p-4">
+        <!-- Balance Telemetry Strip -->
+        <div class="row g-2 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="tender-stat p-3 rounded-3 border text-center">
+              <span class="small text-muted text-uppercase d-block fw-bold" style="font-size: 0.66rem;">Total Bill</span>
+              <span class="fs-4 fw-bold font-monospace">${{ totalPayable | number:'1.2-2' }}</span>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="tender-stat p-3 rounded-3 border text-center">
+              <span class="small text-muted text-uppercase d-block fw-bold" style="font-size: 0.66rem;">Tendered</span>
+              <span class="fs-4 fw-bold font-monospace text-success">${{ totalPaidTendered | number:'1.2-2' }}</span>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="tender-stat p-3 rounded-3 border text-center" [class.border-warning]="remainingBalanceDue > 0">
+              <span class="small text-muted text-uppercase d-block fw-bold" style="font-size: 0.66rem;">Balance Due</span>
+              <span class="fs-4 fw-bold font-monospace" [class.text-danger]="remainingBalanceDue > 0" [class.text-muted]="remainingBalanceDue === 0">
+                ${{ remainingBalanceDue | number:'1.2-2' }}
+              </span>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="tender-stat p-3 rounded-3 border text-center">
+              <span class="small text-muted text-uppercase d-block fw-bold" style="font-size: 0.66rem;">Change Due</span>
+              <span class="fs-4 fw-bold font-monospace text-primary">${{ changeDue | number:'1.2-2' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Cash Denomination Bar -->
+        <div class="mb-3">
+          <div class="small text-muted fw-semibold mb-2">Quick Cash Tender</div>
+          <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-sm btn-outline-primary font-monospace" (click)="applyQuickCash('EXACT')">Exact (${{ totalPayable | number:'1.2-2' }})</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary font-monospace" (click)="applyQuickCash('ROUND_UP')">Round Up</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary font-monospace" (click)="applyQuickCash('ADD_10')">+$10</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary font-monospace" (click)="applyQuickCash('ADD_20')">+$20</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary font-monospace" (click)="applyQuickCash('ADD_50')">+$50</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary font-monospace" (click)="applyQuickCash('ADD_100')">+$100</button>
+          </div>
+        </div>
+
+        <!-- Payment Lines -->
+        <div class="mb-3">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <h6 class="fw-bold mb-0">Payment Tenders</h6>
+            <button type="button" class="btn btn-sm btn-outline-primary" (click)="addSplitPaymentLine()">
+              <i class="bi bi-plus-circle me-1"></i> Split Tender
+            </button>
+          </div>
+
+          <div *ngFor="let p of splitPayments; let idx = index" class="p-3 rounded-3 border bg-light mb-2 d-flex flex-wrap align-items-center gap-2">
+            <div style="inline-size: 205px;">
+              <label class="small text-muted d-block">Method</label>
+              <select class="form-select form-select-sm" [(ngModel)]="p.paymentMethod">
+                <option value="CASH">Cash</option>
+                <option value="CARD">Debit / Credit Card</option>
+                <option value="BANK_TRANSFER">Bank Transfer</option>
+                <option value="JAZZCASH">JazzCash</option>
+                <option value="EASYPAISA">EasyPaisa</option>
+                <option value="CRYPTO_USDT">Crypto (USDT)</option>
+                <option value="CRYPTO_BTC">Crypto (Bitcoin)</option>
+                <option value="CUSTOM">Custom Payment</option>
+              </select>
+            </div>
+
+            <div style="inline-size: 140px;">
+              <label class="small text-muted d-block">Amount ($)</label>
+              <input type="number" step="0.01" min="0" class="form-control form-control-sm font-monospace fw-bold" [(ngModel)]="p.amount" appNumberOnly [allowDecimals]="true" />
+            </div>
+
+            <div class="flex-grow-1" style="min-inline-size: 170px;">
+              <label class="small text-muted d-block">Reference / Slip #</label>
+              <input type="text" class="form-control form-control-sm font-monospace" placeholder="TXN-99812 / Last 4 digits" [(ngModel)]="p.transactionReference" />
+            </div>
+
+            <div *ngIf="splitPayments.length > 1" class="pt-3">
+              <button type="button" class="btn btn-sm btn-outline-danger" (click)="removeSplitPaymentLine(idx)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Credit Agreement Warning -->
+        <div *ngIf="remainingBalanceDue > 0" class="p-3 bg-warning-subtle border rounded-3 mb-3">
+          <div class="d-flex align-items-center gap-2 mb-2 fw-bold">
+            <i class="bi bi-clock-history"></i> Credit Sale Balance: ${{ remainingBalanceDue | number:'1.2-2' }}
+          </div>
+          <div class="row g-2 align-items-center">
+            <div class="col-md-6">
+              <label class="small text-muted">Repayment Due Date</label>
+              <input type="date" class="form-control form-control-sm" [(ngModel)]="dueDate" />
+            </div>
+            <div class="col-md-6">
+              <span class="small text-muted d-block">Customer Account</span>
+              <span class="fw-bold">{{ selectedCustomer?.name || 'None Selected (Required)' }}</span>
+              <span *ngIf="selectedCustomer" class="badge bg-secondary ms-2">Avail: ${{ selectedCustomer.availableCredit | number:'1.2-2' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="small text-muted">Invoice Notes (optional)</label>
+          <input type="text" class="form-control form-control-sm" placeholder="Warranty remarks or delivery note..." [(ngModel)]="paymentNotes" />
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-outline-secondary" (click)="showPaymentModal = false">Cancel</button>
         <button
           type="button"
-          class="btn w-100 p-2 text-center border"
-          [ngClass]="paymentMethod === 'Credit/Debit Card' ? 'btn-primary' : 'btn-light'"
-          (click)="paymentMethod = 'Credit/Debit Card'"
+          class="btn btn-primary px-4"
+          (click)="submitCheckout()"
+          [disabled]="isProcessingCheckout || totalPaidTendered < 0"
         >
-          <i class="bi bi-credit-card d-block fs-4 mb-1"></i>
-          <span class="small fw-semibold">Card Terminal</span>
+          <span *ngIf="isProcessingCheckout" class="spinner-border spinner-border-sm me-1"></span>
+          Complete Sale &amp; Issue Invoice
         </button>
       </div>
-      <div class="col-4">
-        <button
-          type="button"
-          class="btn w-100 p-2 text-center border"
-          [ngClass]="paymentMethod === 'Cash' ? 'btn-primary' : 'btn-light'"
-          (click)="paymentMethod = 'Cash'"
-        >
-          <i class="bi bi-cash-stack d-block fs-4 mb-1"></i>
-          <span class="small fw-semibold">Cash Tender</span>
-        </button>
-      </div>
-      <div class="col-4">
-        <button
-          type="button"
-          class="btn w-100 p-2 text-center border"
-          [ngClass]="paymentMethod === 'Bank Transfer' ? 'btn-primary' : 'btn-light'"
-          (click)="paymentMethod = 'Bank Transfer'"
-        >
-          <i class="bi bi-bank d-block fs-4 mb-1"></i>
-          <span class="small fw-semibold">Wire / QR Pay</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Cash Tender Calculator -->
-    <div *ngIf="paymentMethod === 'Cash'" class="p-3 rounded bg-light border mb-3">
-      <div class="d-flex align-items-center justify-content-between mb-2">
-        <label for="cashInput" class="small fw-semibold text-secondary mb-0">Cash Tendered ($):</label>
-        <button type="button" class="btn btn-sm btn-link p-0 text-primary small text-decoration-none" (click)="setExactCash()">
-          Exact Amount
-        </button>
-      </div>
-      <div class="input-group mb-2">
-        <span class="input-group-text">$</span>
-        <input id="cashInput" type="number" class="form-control form-control-lg font-monospace fw-bold" [(ngModel)]="cashTendered" />
-      </div>
-
-      <!-- Quick Bill Buttons -->
-      <div class="d-flex gap-2 mb-2">
-        <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" (click)="addCash(20)">+$20</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" (click)="addCash(50)">+$50</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" (click)="addCash(100)">+$100</button>
-      </div>
-
-      <div class="d-flex align-items-center justify-content-between pt-2 border-top">
-        <span class="small fw-bold text-dark">Change Due:</span>
-        <span class="h5 mb-0 fw-bold font-monospace" [ngClass]="cashTendered >= totalPayable ? 'text-success' : 'text-danger'">
-          ${{ changeDue | number:'1.2-2' }}
-        </span>
-      </div>
-    </div>
-
-    <!-- Card / Digital Mode Info -->
-    <div *ngIf="paymentMethod !== 'Cash'" class="p-3 rounded bg-light border mb-3 text-center">
-      <i class="bi bi-terminal fs-2 text-primary d-block mb-1"></i>
-      <div class="small fw-bold text-dark">POS Card Terminal Ready</div>
-      <small class="text-muted">Tap, Insert chip card or scan dynamic QR on customer display.</small>
-    </div>
-
-    <!-- Actions -->
-    <div class="d-flex gap-2 pt-2 border-top">
-      <button type="button" class="btn-app btn-app-secondary w-50" (click)="showPaymentModal = false">
-        Cancel
-      </button>
-      <button
-        type="button"
-        class="btn-app btn-app-primary w-50 py-2 fs-6 fw-bold"
-        (click)="completeSale()"
-        [disabled]="paymentMethod === 'Cash' && cashTendered < totalPayable"
-      >
-        <i class="bi bi-check2-circle"></i> Complete Sale
-      </button>
     </div>
   </div>
 </div>
 
-<!-- RECEIPT MODAL -->
-<div *ngIf="showReceiptModal && completedSale" class="drawer-backdrop" (click)="closeReceipt()" aria-hidden="true"></div>
-<div *ngIf="showReceiptModal && completedSale" class="modal-dialog-receipt" role="dialog" aria-modal="true" aria-label="Thermal Receipt">
-  <div class="printable-receipt bg-white p-4 shadow-lg rounded border">
-    <div class="text-center mb-3">
-      <div class="fw-bold text-dark fs-5">ApexCellular POS</div>
-      <div class="small text-muted">Downtown Flagship Store #01</div>
-      <div class="small text-muted">Tel: +1 (555) 019-2834</div>
-      <div class="small font-monospace text-secondary mt-1">TAX ID: US-849201948</div>
-    </div>
+<!-- ========================================================================= -->
+<!-- MODAL 2: COMPLETED SALE & PRINTABLE 80MM THERMAL RECEIPT                  -->
+<!-- ========================================================================= -->
+<div *ngIf="showReceiptModal && completedSale" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(9, 13, 22, 0.65); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white no-print">
+        <h5 class="modal-title fw-bold"><i class="bi bi-check-circle-fill me-2"></i>Sale Finalized</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="showReceiptModal = false"></button>
+      </div>
 
-    <div class="border-top border-bottom border-dashed py-2 my-2 small">
-      <div class="d-flex justify-content-between">
-        <span>Invoice:</span>
-        <strong class="font-monospace">{{ completedSale.invoiceNumber }}</strong>
-      </div>
-      <div class="d-flex justify-content-between">
-        <span>Date:</span>
-        <span>{{ completedSale.timestamp }}</span>
-      </div>
-      <div class="d-flex justify-content-between">
-        <span>Customer:</span>
-        <span>{{ completedSale.customerName }}</span>
-      </div>
-      <div class="d-flex justify-content-between">
-        <span>Cashier:</span>
-        <span>{{ completedSale.cashierName }}</span>
-      </div>
-    </div>
+      <div class="modal-body p-4">
+        <!-- Real 80mm Printable Thermal Receipt Surface -->
+        <div class="printable-receipt receipt-paper p-3 rounded-3 border font-monospace small">
+          <div class="text-center pb-2 mb-2 border-bottom border-dashed">
+            <div class="fw-bold fs-6">{{ authService.currentShop?.name || 'ApexCellular Store' }}</div>
+            <div class="text-muted" style="font-size: 0.72rem;" *ngIf="authService.currentShop?.address">{{ authService.currentShop?.address }}</div>
+            <div class="text-muted" style="font-size: 0.72rem;" *ngIf="authService.currentShop?.phone">Tel: {{ authService.currentShop?.phone }}</div>
+            <div class="fw-bold mt-2">{{ completedSale.invoiceNo }}</div>
+            <div class="text-muted" style="font-size: 0.72rem;">{{ completedSale.createdAt | date:'medium' }}</div>
+          </div>
 
-    <div class="py-2 small">
-      <div *ngFor="let it of completedSale.items" class="mb-2">
-        <div class="d-flex justify-content-between">
-          <span class="fw-bold text-dark">{{ it.name }}</span>
-          <span class="font-monospace">${{ (it.price * it.quantity) | number:'1.2-2' }}</span>
+          <div class="pb-2 mb-2 border-bottom border-dashed" style="font-size: 0.75rem;">
+            <div><strong>Customer:</strong> {{ completedSale.customerName }}</div>
+            <div *ngIf="completedSale.customerCnicMasked"><strong>CNIC:</strong> {{ completedSale.customerCnicMasked }}</div>
+            <div><strong>Cashier:</strong> {{ cashierName }}</div>
+          </div>
+
+          <!-- Line Items -->
+          <div class="pb-2 mb-2 border-bottom border-dashed" *ngIf="completedItemsSnapshot.length > 0">
+            <div *ngFor="let ci of completedItemsSnapshot" class="mb-2">
+              <div class="d-flex justify-content-between fw-semibold">
+                <span>{{ ci.productName }} x{{ ci.quantity }}</span>
+                <span>${{ ci.subtotal | number:'1.2-2' }}</span>
+              </div>
+              <div class="text-muted" style="font-size: 0.7rem;">
+                {{ ci.itemType === 'PHONE' ? 'IMEI: ' + ci.identifier : 'SKU: ' + ci.identifier }}
+                <span *ngIf="ci.warrantyMonths > 0"> &middot; {{ ci.warrantyMonths }}m Warranty</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Totals -->
+          <div class="d-flex justify-content-between mb-1">
+            <span>Subtotal:</span>
+            <span>${{ completedSale.subtotal | number:'1.2-2' }}</span>
+          </div>
+          <div *ngIf="completedSale.discountAmount > 0" class="d-flex justify-content-between mb-1 text-danger">
+            <span>Discount:</span>
+            <span>-${{ completedSale.discountAmount | number:'1.2-2' }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1">
+            <span>Tax ({{ completedSale.taxRate }}%):</span>
+            <span>+${{ completedSale.taxAmount | number:'1.2-2' }}</span>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-top border-bottom border-dashed fw-bold fs-6 my-2">
+            <span>TOTAL:</span>
+            <span>${{ completedSale.totalAmount | number:'1.2-2' }}</span>
+          </div>
+          <div class="d-flex justify-content-between text-success fw-semibold">
+            <span>Paid:</span>
+            <span>${{ completedSale.amountPaid | number:'1.2-2' }}</span>
+          </div>
+          <div *ngIf="completedSale.balanceDue > 0" class="d-flex justify-content-between text-danger fw-bold mt-1">
+            <span>Balance Due:</span>
+            <span>${{ completedSale.balanceDue | number:'1.2-2' }}</span>
+          </div>
+
+          <div class="text-center text-muted mt-3 pt-2 border-top border-dashed" style="font-size: 0.68rem;">
+            Thank you for shopping with {{ authService.currentShop?.name || 'us' }}!<br />
+            Keep invoice for warranty claims &amp; returns.
+          </div>
         </div>
-        <div class="text-muted d-flex justify-content-between" style="font-size: 0.75rem;">
-          <span>{{ it.quantity }} x ${{ it.price | number:'1.2-2' }}</span>
-          <span *ngIf="it.imei" class="font-monospace">IMEI: {{ it.imei }}</span>
+
+        <div class="d-flex gap-2 justify-content-center mt-3 no-print">
+          <button type="button" class="btn btn-outline-primary" (click)="downloadInvoicePdf()">
+            <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF
+          </button>
+          <button type="button" class="btn btn-primary" (click)="printInvoice()">
+            <i class="bi bi-printer me-1"></i> Print 80mm Receipt
+          </button>
         </div>
       </div>
-    </div>
 
-    <div class="border-top border-dashed pt-2 small">
-      <div class="d-flex justify-content-between mb-1">
-        <span>Subtotal:</span>
-        <span class="font-monospace">${{ completedSale.subtotal | number:'1.2-2' }}</span>
+      <div class="modal-footer bg-light justify-content-center no-print">
+        <button type="button" class="btn btn-secondary px-4" (click)="showReceiptModal = false">Start Next Sale</button>
       </div>
-      <div class="d-flex justify-content-between mb-1" *ngIf="completedSale.discount > 0">
-        <span>Discount:</span>
-        <span class="font-monospace text-danger">-${{ completedSale.discount | number:'1.2-2' }}</span>
-      </div>
-      <div class="d-flex justify-content-between mb-1">
-        <span>Sales Tax (5%):</span>
-        <span class="font-monospace">${{ completedSale.tax | number:'1.2-2' }}</span>
-      </div>
-      <div class="d-flex justify-content-between fw-bold fs-6 text-dark pt-1 border-top">
-        <span>TOTAL DUE:</span>
-        <span class="font-monospace">${{ completedSale.total | number:'1.2-2' }}</span>
-      </div>
-      <div class="d-flex justify-content-between text-muted small mt-1">
-        <span>Paid via:</span>
-        <span>{{ completedSale.paymentMethod }}</span>
-      </div>
-    </div>
-
-    <div class="text-center mt-3 pt-2 border-top border-dashed small text-muted" style="font-size: 0.7rem;">
-      Thank you for your business!<br />
-      IMEI devices are backed by 90-day store warranty.<br />
-      Returns accepted within 14 days with original receipt.
-    </div>
-
-    <div class="d-flex gap-2 mt-3 pt-2 border-top no-print">
-      <button type="button" class="btn-app btn-app-secondary w-50" (click)="closeReceipt()">
-        Close
-      </button>
-      <button type="button" class="btn-app btn-app-primary w-50" (click)="printReceipt()">
-        <i class="bi bi-printer" aria-hidden="true"></i> Print Receipt
-      </button>
     </div>
   </div>
 </div>
 
-<!-- NEW CUSTOMER QUICK REGISTRATION MODAL -->
-<div *ngIf="showNewCustomerModal" class="drawer-backdrop" (click)="showNewCustomerModal = false" aria-hidden="true"></div>
-<div *ngIf="showNewCustomerModal" class="modal-dialog-custom shadow-lg" role="dialog" aria-modal="true" aria-label="Quick Add Customer">
-  <div class="modal-content bg-white p-4 rounded-3 border">
-    <div class="d-flex align-items-center justify-content-between pb-2 border-bottom mb-3">
-      <h2 class="h6 fw-bold mb-0 text-dark">Quick Customer Registration</h2>
-      <button type="button" class="btn-close" (click)="showNewCustomerModal = false"></button>
+<!-- ========================================================================= -->
+<!-- MODAL 3: PARKED / HELD CARTS QUEUE                                        -->
+<!-- ========================================================================= -->
+<div *ngIf="showParkedModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(9, 13, 22, 0.56); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-light">
+        <h5 class="modal-title fw-bold"><i class="bi bi-pause-circle me-2 text-primary"></i>Held / Parked Sales ({{ parkedSales.length }})</h5>
+        <button type="button" class="btn-close" (click)="showParkedModal = false"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div *ngIf="parkedSales.length === 0" class="text-center py-4 text-muted small">
+          No carts currently on hold. Use <strong>Hold Cart (Alt+H)</strong> to park an active checkout.
+        </div>
+        <div *ngFor="let p of parkedSales" class="p-3 rounded-3 border bg-light mb-2 d-flex align-items-center justify-content-between gap-2">
+          <div class="overflow-hidden">
+            <div class="fw-bold small text-truncate">{{ p.label }}</div>
+            <div class="text-muted font-monospace" style="font-size: 0.72rem;">
+              {{ p.items.length }} item(s) &middot; ${{ p.total | number:'1.2-2' }} &middot; {{ p.parkedAt | date:'shortTime' }}
+            </div>
+          </div>
+          <div class="d-flex gap-1 flex-shrink-0">
+            <button type="button" class="btn btn-sm btn-primary" (click)="recallParkedSale(p)">Recall</button>
+            <button type="button" class="btn btn-sm btn-outline-danger" (click)="deleteParkedSale(p.id)"><i class="bi bi-trash"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="showParkedModal = false">Close</button>
+      </div>
     </div>
+  </div>
+</div>
 
-    <div class="mb-3">
-      <label for="custName" class="app-form-label">Customer Full Name <span class="required-star">*</span></label>
-      <input id="custName" type="text" class="app-input" placeholder="e.g. Liam Foster" [(ngModel)]="newCustomerName" />
+<!-- ========================================================================= -->
+<!-- MODAL 4: APPROVALS HUB (DISCOUNTS & CREDIT LIMIT OVERRIDES)               -->
+<!-- ========================================================================= -->
+<div *ngIf="showApprovalsModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(9, 13, 22, 0.56); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-light">
+        <div>
+          <h5 class="modal-title fw-bold mb-0"><i class="bi bi-shield-check me-2 text-primary"></i>POS Approvals Queue</h5>
+          <small class="text-muted">{{ isShopAdmin ? 'Review staff discount and credit override requests' : 'Track and apply manager-approved discounts & credit overrides' }}</small>
+        </div>
+        <button type="button" class="btn-close" (click)="showApprovalsModal = false"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn" [ngClass]="approvalsTab === 'discounts' ? 'btn-primary' : 'btn-outline-secondary'" (click)="approvalsTab = 'discounts'">
+              Price Discounts ({{ allDiscountRequests.length }})
+            </button>
+            <button type="button" class="btn" [ngClass]="approvalsTab === 'credits' ? 'btn-primary' : 'btn-outline-secondary'" (click)="approvalsTab = 'credits'">
+              Credit Overrides ({{ allCreditOverrides.length }})
+            </button>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" (click)="loadApprovals()">
+            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+          </button>
+        </div>
+
+        <!-- Discount Requests List -->
+        <div *ngIf="approvalsTab === 'discounts'">
+          <div *ngIf="allDiscountRequests.length === 0" class="text-center py-4 text-muted small">
+            No discount approval requests recorded yet.
+          </div>
+          <div *ngFor="let req of allDiscountRequests" class="p-3 rounded-3 border bg-light mb-2">
+            <div class="d-flex align-items-start justify-content-between gap-2">
+              <div>
+                <div class="fw-bold small">{{ req.productName }}</div>
+                <div class="small font-monospace mt-1">
+                  Default: ${{ req.defaultPrice | number:'1.2-2' }} &rarr;
+                  <strong class="text-primary">Requested: ${{ req.requestedPrice | number:'1.2-2' }}</strong>
+                  <span class="text-danger ms-1">(-${{ req.discountAmount | number:'1.2-2' }})</span>
+                </div>
+                <div class="text-muted small mt-1">
+                  By {{ req.requesterName }} &middot; &ldquo;{{ req.reason }}&rdquo;
+                </div>
+              </div>
+              <div class="text-end flex-shrink-0">
+                <span
+                  class="badge mb-2 d-inline-block"
+                  [ngClass]="req.status === 'APPROVED' ? 'bg-success-subtle text-success' : (req.status === 'PENDING' ? 'bg-warning-subtle text-warning' : (req.status === 'APPLIED' ? 'bg-info-subtle text-info' : 'bg-danger-subtle text-danger'))"
+                >
+                  {{ req.status }}
+                </span>
+
+                <div class="d-flex gap-1 justify-content-end" *ngIf="isShopAdmin && req.status === 'PENDING'">
+                  <button type="button" class="btn btn-sm btn-success py-0 px-2" [disabled]="reviewingApprovalId === req.id" (click)="reviewDiscount(req, 'APPROVE')">Approve</button>
+                  <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" [disabled]="reviewingApprovalId === req.id" (click)="reviewDiscount(req, 'REJECT')">Reject</button>
+                </div>
+
+                <div *ngIf="req.status === 'APPROVED'">
+                  <button type="button" class="btn btn-sm btn-primary py-0 px-2" (click)="applyApprovedDiscountToCart(req)">
+                    Apply to Cart
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Credit Overrides List -->
+        <div *ngIf="approvalsTab === 'credits'">
+          <div *ngIf="allCreditOverrides.length === 0" class="text-center py-4 text-muted small">
+            No credit limit override requests recorded yet.
+          </div>
+          <div *ngFor="let ovr of allCreditOverrides" class="p-3 rounded-3 border bg-light mb-2">
+            <div class="d-flex align-items-start justify-content-between gap-2">
+              <div>
+                <div class="fw-bold small">{{ ovr.customerName }}</div>
+                <div class="small font-monospace mt-1">
+                  Sale: ${{ ovr.saleAmount | number:'1.2-2' }} &middot; Limit: ${{ ovr.creditLimit | number:'1.2-2' }} &middot;
+                  <strong class="text-danger">Excess: +${{ ovr.excessAmount | number:'1.2-2' }}</strong>
+                </div>
+                <div class="text-muted small mt-1">
+                  By {{ ovr.requesterName }} &middot; &ldquo;{{ ovr.reason }}&rdquo;
+                </div>
+              </div>
+              <div class="text-end flex-shrink-0">
+                <span
+                  class="badge mb-2 d-inline-block"
+                  [ngClass]="ovr.status === 'APPROVED' ? 'bg-success-subtle text-success' : (ovr.status === 'PENDING' ? 'bg-warning-subtle text-warning' : (ovr.status === 'USED' ? 'bg-info-subtle text-info' : 'bg-danger-subtle text-danger'))"
+                >
+                  {{ ovr.status }}
+                </span>
+
+                <div class="d-flex gap-1 justify-content-end" *ngIf="isShopAdmin && ovr.status === 'PENDING'">
+                  <button type="button" class="btn btn-sm btn-success py-0 px-2" [disabled]="reviewingApprovalId === ovr.id" (click)="reviewCreditOverride(ovr, 'APPROVE')">Authorize</button>
+                  <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" [disabled]="reviewingApprovalId === ovr.id" (click)="reviewCreditOverride(ovr, 'REJECT')">Decline</button>
+                </div>
+
+                <div *ngIf="ovr.status === 'APPROVED'">
+                  <button type="button" class="btn btn-sm btn-primary py-0 px-2" (click)="attachApprovedCreditOverride(ovr)">
+                    Attach to Sale
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="showApprovalsModal = false">Close</button>
+      </div>
     </div>
+  </div>
+</div>
 
-    <div class="mb-3">
-      <label for="custPhone" class="app-form-label">Phone Number</label>
-      <input id="custPhone" type="tel" class="app-input" placeholder="+1 (555) 000-0000" [(ngModel)]="newCustomerPhone" />
+<!-- MODAL 5: QUICK ADD CUSTOMER -->
+<div *ngIf="showNewCustomerModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(9, 13, 22, 0.56); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-light">
+        <h5 class="modal-title fw-bold"><i class="bi bi-person-plus me-2 text-primary"></i>Register Customer</h5>
+        <button type="button" class="btn-close" (click)="showNewCustomerModal = false"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Full Name *</label>
+          <input type="text" class="form-control" [(ngModel)]="newCustomerName" placeholder="e.g. Muhammad Zubair" [class.is-invalid]="customerErrors['name']" (ngModelChange)="customerErrors['name'] = ''" />
+          <div *ngIf="customerErrors['name']" class="invalid-feedback d-block small">{{ customerErrors['name'] }}</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Phone Number</label>
+          <input type="tel" class="form-control" [(ngModel)]="newCustomerPhone" placeholder="0300-1234567" appPhoneMask [class.is-invalid]="customerErrors['phone']" (ngModelChange)="customerErrors['phone'] = ''" />
+          <div *ngIf="customerErrors['phone']" class="invalid-feedback d-block small">{{ customerErrors['phone'] }}</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold">
+            CNIC Number (13 digits)
+            <span *ngIf="customerCnicRequiredForCart" class="text-danger">* Mandatory for phone sales</span>
+          </label>
+          <input type="text" class="form-control font-monospace" [(ngModel)]="newCustomerCnic" placeholder="42101-1234567-1" appCnicMask [class.is-invalid]="customerErrors['cnic']" (ngModelChange)="customerErrors['cnic'] = ''" />
+          <div *ngIf="customerErrors['cnic']" class="invalid-feedback d-block small">{{ customerErrors['cnic'] }}</div>
+          <div class="form-text small">Encrypted with AES-256-GCM at rest and masked on receipts.</div>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label small fw-bold">Email Address</label>
+          <input type="email" class="form-control" [(ngModel)]="newCustomerEmail" placeholder="customer@example.com" [class.is-invalid]="customerErrors['email']" (ngModelChange)="customerErrors['email'] = ''" />
+          <div *ngIf="customerErrors['email']" class="invalid-feedback d-block small">{{ customerErrors['email'] }}</div>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-outline-secondary" (click)="showNewCustomerModal = false">Cancel</button>
+        <button type="button" class="btn btn-primary px-4" (click)="saveNewCustomer()">Register &amp; Select</button>
+      </div>
     </div>
+  </div>
+</div>
 
-    <div class="d-flex justify-content-end gap-2 pt-2 border-top">
-      <button type="button" class="btn-app btn-app-secondary" (click)="showNewCustomerModal = false">Cancel</button>
-      <button type="button" class="btn-app btn-app-primary" (click)="saveNewCustomer()" [disabled]="!newCustomerName">
-        Save &amp; Attach to Sale
-      </button>
+<!-- MODAL 6: DISCOUNT / PRICE NEGOTIATION -->
+<div *ngIf="showDiscountModal && discountTargetItem" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(9, 13, 22, 0.56); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-light">
+        <h5 class="modal-title fw-bold"><i class="bi bi-tag me-2 text-primary"></i>Adjust Price / Request Discount</h5>
+        <button type="button" class="btn-close" (click)="showDiscountModal = false"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <p class="mb-2"><strong>Item:</strong> {{ discountTargetItem.productName }}</p>
+        <div class="d-flex justify-content-between mb-3 small p-2 rounded bg-light border">
+          <span class="text-muted">Default Retail Price:</span>
+          <span class="fw-bold font-monospace">${{ discountTargetItem.defaultPrice | number:'1.2-2' }}</span>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Negotiated Unit Price ($)</label>
+          <input type="number" step="0.01" min="0" class="form-control form-control-lg font-monospace fw-bold" [(ngModel)]="discountRequestedPrice" appNumberOnly [allowDecimals]="true" />
+        </div>
+
+        <div *ngIf="discountRequestedPrice < discountTargetItem.defaultPrice && !isShopAdmin" class="mb-2 p-3 bg-warning-subtle rounded-3 border">
+          <label class="form-label small fw-bold">Manager Approval Justification *</label>
+          <textarea class="form-control form-control-sm" rows="2" placeholder="e.g. Price match with authorized distributor promo..." [(ngModel)]="discountReason"></textarea>
+          <div class="form-text small">Submits directly to Shop Admin's live Action Center &amp; POS Approvals Queue.</div>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-outline-secondary" (click)="showDiscountModal = false">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="submitPriceChange()">
+          {{ discountRequestedPrice < discountTargetItem.defaultPrice && !isShopAdmin ? 'Submit Approval Request' : 'Apply Price' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 7: CREDIT OVERRIDE REQUEST -->
+<div *ngIf="showCreditOverrideModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(9, 13, 22, 0.56); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title fw-bold"><i class="bi bi-shield-exclamation me-2"></i>Credit Limit Override Required</h5>
+        <button type="button" class="btn-close" (click)="showCreditOverrideModal = false"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <p class="small">This credit balance exceeds <strong>{{ selectedCustomer?.name }}</strong>'s authorized limit.</p>
+        <div class="p-3 bg-light rounded-3 border mb-3 small font-monospace">
+          <div class="d-flex justify-content-between"><span>Credit Limit:</span><span>${{ selectedCustomer?.creditLimit | number:'1.2-2' }}</span></div>
+          <div class="d-flex justify-content-between"><span>Current Balance:</span><span>${{ selectedCustomer?.outstandingBalance | number:'1.2-2' }}</span></div>
+          <div class="d-flex justify-content-between text-danger fw-bold mt-1 pt-1 border-top">
+            <span>Excess Requested:</span>
+            <span>${{ remainingBalanceDue - (selectedCustomer?.availableCredit || 0) | number:'1.2-2' }}</span>
+          </div>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label small fw-bold">Override Justification *</label>
+          <textarea class="form-control" rows="2" placeholder="Explain reason for temporary credit limit override..." [(ngModel)]="creditOverrideReason"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-outline-secondary" (click)="showCreditOverrideModal = false">Cancel</button>
+        <button type="button" class="btn btn-warning fw-semibold" (click)="submitCreditOverrideRequest()">Request Override</button>
+      </div>
     </div>
   </div>
 </div>

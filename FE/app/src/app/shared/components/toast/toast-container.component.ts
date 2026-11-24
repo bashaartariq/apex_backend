@@ -7,30 +7,30 @@ import { ToastMessage, ToastService } from '../../../core/services/toast.service
     <div class="toast-stack position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
       <div
         *ngFor="let toast of toasts"
-        class="toast-item shadow-lg border rounded p-3 mb-2 bg-white d-flex align-items-start gap-2"
+        class="toast-item shadow-lg d-flex align-items-start gap-2"
         [ngClass]="'toast-' + toast.type"
         role="alert"
         aria-live="polite"
       >
-        <div class="toast-icon-wrap flex-shrink-0 mt-1">
-          <i *ngIf="toast.type === 'success'" class="bi bi-check-circle-fill text-success fs-5"></i>
-          <i *ngIf="toast.type === 'danger'" class="bi bi-x-circle-fill text-danger fs-5"></i>
-          <i *ngIf="toast.type === 'warning'" class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
-          <i *ngIf="toast.type === 'info'" class="bi bi-info-circle-fill text-info fs-5"></i>
+        <div class="toast-icon-wrap flex-shrink-0" [ngClass]="'icon-' + toast.type">
+          <i *ngIf="toast.type === 'success'" class="bi bi-check-lg"></i>
+          <i *ngIf="toast.type === 'danger'" class="bi bi-x-lg"></i>
+          <i *ngIf="toast.type === 'warning'" class="bi bi-exclamation-lg"></i>
+          <i *ngIf="toast.type === 'info'" class="bi bi-info-lg"></i>
         </div>
 
-        <div class="toast-body-content flex-grow-1">
-          <div class="d-flex align-items-center justify-content-between mb-1">
-            <strong class="text-dark small fw-bold">{{ toast.title }}</strong>
+        <div class="toast-body-content flex-grow-1 overflow-hidden">
+          <div class="d-flex align-items-center justify-content-between gap-2 mb-0.5">
+            <strong class="small fw-bold text-truncate">{{ toast.title }}</strong>
             <button
               type="button"
-              class="btn-close ms-2"
-              style="font-size: 0.65rem;"
+              class="btn-close"
+              style="font-size: 0.62rem;"
               aria-label="Close notification"
               (click)="dismiss(toast.id)"
             ></button>
           </div>
-          <div class="text-secondary small">{{ toast.message }}</div>
+          <div class="text-secondary small lh-sm">{{ toast.message }}</div>
         </div>
       </div>
     </div>
@@ -38,36 +38,44 @@ import { ToastMessage, ToastService } from '../../../core/services/toast.service
   styles: [
     `
       .toast-stack {
-        max-inline-size: 380px;
+        max-inline-size: 390px;
         inline-size: 100%;
         pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
       }
       .toast-item {
         pointer-events: auto;
-        border-inline-start-width: 4px !important;
-        animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        padding: 0.8rem 0.95rem;
+        border-radius: var(--ms-radius-md);
+        background-color: var(--ms-bg-surface);
+        color: var(--ms-text-primary);
+        border: 1px solid var(--ms-border-strong);
+        border-inline-start: 4px solid var(--ms-brand-primary);
+        animation: slideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
       }
-      .toast-success {
-        border-inline-start-color: var(--ms-success) !important;
+      .toast-success { border-inline-start-color: var(--ms-success); }
+      .toast-danger { border-inline-start-color: var(--ms-danger); }
+      .toast-warning { border-inline-start-color: var(--ms-warning); }
+      .toast-info { border-inline-start-color: var(--ms-info); }
+      .toast-icon-wrap {
+        inline-size: 1.75rem;
+        block-size: 1.75rem;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.95rem;
+        margin-top: 1px;
       }
-      .toast-danger {
-        border-inline-start-color: var(--ms-danger) !important;
-      }
-      .toast-warning {
-        border-inline-start-color: var(--ms-warning) !important;
-      }
-      .toast-info {
-        border-inline-start-color: var(--ms-info) !important;
-      }
+      .icon-success { background: var(--ms-success-subtle); color: var(--ms-success); }
+      .icon-danger { background: var(--ms-danger-subtle); color: var(--ms-danger); }
+      .icon-warning { background: var(--ms-warning-subtle); color: var(--ms-warning); }
+      .icon-info { background: var(--ms-info-subtle); color: var(--ms-info); }
       @keyframes slideUp {
-        from {
-          opacity: 0;
-          transform: translateY(12px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(12px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
       }
     `,
   ],
