@@ -20,19 +20,6 @@ out-tsc/
 **/.env.*
 !**/.env.example
 
-# SQLite database files & data directories
-*.sqlite
-*.sqlite3
-*.sqlite-wal
-*.sqlite-shm
-*.sqlite-journal
-*.db
-*.db-wal
-*.db-shm
-*.db-journal
-BE/data/
-data/
-
 # Logs
 logs/
 **/logs/
