@@ -2,11 +2,17 @@ import { getDatabase, closeDatabase } from '../config/database';
 import { execute, queryAll, withTransaction } from './query';
 import { Migration, migration001InitInfrastructure } from './migrations/001_init_infrastructure';
 import { migration002AuthAndMultiTenancy } from './migrations/002_auth_and_multi_tenancy';
+import { migration003InventoryAndPurchasing } from './migrations/003_inventory_and_purchasing';
+import { migration004PosSalesAndCustomers } from './migrations/004_pos_sales_and_customers';
+import { migration005ReportingIndexes } from './migrations/005_reporting_indexes';
 import { logger } from '../utils/logger';
 
 const MIGRATIONS: readonly Migration[] = [
   migration001InitInfrastructure,
   migration002AuthAndMultiTenancy,
+  migration003InventoryAndPurchasing,
+  migration004PosSalesAndCustomers,
+  migration005ReportingIndexes,
 ];
 
 function ensureMigrationsTable(): void {

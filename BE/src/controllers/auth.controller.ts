@@ -237,7 +237,7 @@ export class AuthController {
       res.status(200).json({
         success: true,
         user: req.user,
-        shop: shop || null,
+        shop: shop ? { ...shop, ownerName: shop.owner_name } : null,
       });
     } catch (err) {
       next(err);

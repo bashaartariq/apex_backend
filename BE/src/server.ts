@@ -11,7 +11,7 @@ function bootstrap(): void {
     runMigrations();
 
     const app = createApp();
-    const server = app.listen(env.port, () => {
+    const server = app.listen(env.port, '127.0.0.1', () => {
       logger.info('Backend server started', {
         environment: env.nodeEnv,
         port: env.port,

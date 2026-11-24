@@ -3,11 +3,15 @@ import { execute, queryAll, withTransaction } from './query';
 import { runMigrations } from './migrate';
 import { Seed, seed001SystemMetadata } from './seeds/001_system_metadata';
 import { seed002PermissionsAndDemoTenants } from './seeds/002_permissions';
+import { seed003InventoryAndPurchasing } from './seeds/003_inventory_and_purchasing';
+import { seed004PosSalesAndCustomers } from './seeds/004_pos_sales_and_customers';
 import { logger } from '../utils/logger';
 
 const SEEDS: readonly Seed[] = [
   seed001SystemMetadata,
   seed002PermissionsAndDemoTenants,
+  seed003InventoryAndPurchasing,
+  seed004PosSalesAndCustomers,
 ];
 
 function ensureSeedsTable(): void {

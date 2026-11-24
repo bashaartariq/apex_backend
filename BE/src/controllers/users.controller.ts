@@ -6,11 +6,13 @@ import { hashPassword, validatePasswordStrength } from '../utils/password';
 import { AppError } from '../middleware/errorHandler';
 
 export const createUserSchema = z.object({
-  name: z.string().trim().min(2, 'Name must be at least 2 characters'),
-  email: z.string().trim().email('Invalid email address').toLowerCase(),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  name: z.string().trim().min(2, 'Please enter a name of at least 2 characters.'),
+  email: z.string().trim().email('Please enter a valid email address.').toLowerCase(),
+  password: z.string().min(8, 'Password must be at least 8 characters.'),
   phone: z.string().trim().optional().nullable(),
-  role: z.enum(['SHOP_ADMIN', 'SHOPKEEPER']).default('SHOPKEEPER'),
+  role: z.enum(['SHOP_ADMIN', 'SHOPKEEPER'], {
+    errorMap: () => ({ message: 'Please select a valid role.' }),
+  }).default('SHOPKEEPER'),
   permissions: z.array(z.string()).optional().default([]),
 });
 

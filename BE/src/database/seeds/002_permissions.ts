@@ -109,7 +109,7 @@ export const seed002PermissionsAndDemoTenants: Seed = {
       'SHOPKEEPER'
     );
 
-    // Assign standard shopkeeper permissions to Alex Johnson (POS, Inventory view, Customers view)
+    // Assign standard shopkeeper permissions to Alex Johnson (POS, Inventory view, Customers view, Reports view)
     const keeperPerms = [
       'dashboard.view',
       'pos.access',
@@ -118,6 +118,7 @@ export const seed002PermissionsAndDemoTenants: Seed = {
       'accessories.view',
       'customers.view',
       'customers.manage',
+      'reports.view',
     ];
 
     const insertUserPermStmt = db.prepare(`
